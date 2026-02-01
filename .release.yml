@@ -1,0 +1,5 @@
+# go-semantic-release config: https://github.com/go-semantic-release/semantic-release
+# Version is derived from conventional commits on the default branch (main).
+# Use: feat: X, fix: Y, chore: Z, BREAKING CHANGE: ...
+commitFormat: conventional
+force-bump-patch-version: true
