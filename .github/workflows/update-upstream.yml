@@ -1,0 +1,149 @@
+# Checks for new google/googlesql releases and opens a PR to update upstream.
+# Attach a bot (e.g. Dependabot-style or a PAT) with write access to allow
+# pushing the update branch and opening the PR.
+#
+# Triggers:
+#   - Schedule: weekly (Sunday 00:00 UTC)
+#   - Manual: workflow_dispatch
+#   - Optional: repository_dispatch from an external bot
+
+name: Update upstream (GoogleSQL)
+
+on:
+  schedule:
+    # Run weekly on Sunday at 00:00 UTC
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only check and log; do not create branch/PR"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-upstream
+  cancel-in-progress: false
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Get latest GoogleSQL release
+        id: latest
+        run: |
+          LATEST=$(curl -sSf "https://api.github.com/repos/google/googlesql/releases/latest" | jq -r '.tag_name // empty')
+          if [ -z "$LATEST" ]; then
+            echo "Could not fetch latest release"
+            exit 1
+          fi
+          echo "tag=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "Latest release: $LATEST"
+
+      - name: Read current upstream version
+        id: current
+        run: |
+          VERSION_FILE="internal/cmd/updater/UPSTREAM_VERSION"
+          if [ -f "$VERSION_FILE" ]; then
+            CURRENT=$(grep -v '^#' "$VERSION_FILE" | head -1 | tr -d '[:space:]')
+            [ -z "$CURRENT" ] && CURRENT="0.0.0"
+          else
+            CURRENT="0.0.0"
+          fi
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "Current version: $CURRENT"
+
+      - name: Compare versions (YYYY.MM.n)
+        id: compare
+        run: |
+          LATEST="${{ steps.latest.outputs.tag }}"
+          CURRENT="${{ steps.current.outputs.current }}"
+          # Simple lexicographic compare for YYYY.MM.n; strip leading 'v' if present
+          LATEST="${LATEST#v}"
+          CURRENT="${CURRENT#v}"
+          if [ "$LATEST" = "$CURRENT" ]; then
+            echo "is_newer=false" >> "$GITHUB_OUTPUT"
+            echo "No update needed ($LATEST is current)."
+            exit 0
+          fi
+          # Compare as dotted versions (works for YYYY.MM.n)
+          if [ "$(printf '%s\n%s' "$CURRENT" "$LATEST" | sort -V | head -n1)" = "$LATEST" ] && [ "$LATEST" != "$CURRENT" ]; then
+            echo "is_newer=false" >> "$GITHUB_OUTPUT"
+            echo "Current ($CURRENT) is already >= latest ($LATEST)."
+            exit 0
+          fi
+          echo "is_newer=true" >> "$GITHUB_OUTPUT"
+          echo "New version available: $CURRENT -> $LATEST"
+
+      - name: Configure Git
+        if: steps.compare.outputs.is_newer == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create update branch and fetch googlesql at tag
+        if: steps.compare.outputs.is_newer == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
+        run: |
+          TAG="${{ steps.latest.outputs.tag }}"
+          BRANCH="update-upstream-${TAG}"
+          git checkout -b "$BRANCH"
+
+          ZETASQL_DIR="internal/cmd/updater/zetasql"
+          # Remove submodule so we can replace it with googlesql tree (tracked as normal files)
+          git submodule deinit -f "$ZETASQL_DIR" 2>/dev/null || true
+          git rm -f "$ZETASQL_DIR" 2>/dev/null || true
+          rm -rf "$ZETASQL_DIR" .git/modules/internal/cmd/updater/zetasql 2>/dev/null || true
+          if [ -f .gitmodules ]; then
+            git config -f .gitmodules --remove-section 'submodule.internal/cmd/updater/zetasql' 2>/dev/null || true
+            git add .gitmodules 2>/dev/null || true
+          fi
+
+          git clone --depth 1 --branch "$TAG" https://github.com/google/googlesql.git "$ZETASQL_DIR"
+          rm -rf "$ZETASQL_DIR/.git"
+
+          echo "${TAG#v}" > internal/cmd/updater/UPSTREAM_VERSION
+          git add "$ZETASQL_DIR" internal/cmd/updater/UPSTREAM_VERSION
+          git status
+
+      - name: Build Docker image and export cache
+        if: steps.compare.outputs.is_newer == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
+        working-directory: internal/cmd/updater
+        run: |
+          make build
+          make export
+
+      - name: Run updater (copy to internal/ccall)
+        if: steps.compare.outputs.is_newer == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
+        working-directory: internal/cmd/updater
+        run: make update
+
+      - name: Commit and push
+        if: steps.compare.outputs.is_newer == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
+        run: |
+          git add internal/ccall internal/cmd/updater/UPSTREAM_VERSION
+          git diff --staged --quiet && echo "No ccall changes" || true
+          git status
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: update upstream to ${{ steps.latest.outputs.tag }}"
+            git push -u origin "update-upstream-${{ steps.latest.outputs.tag }}"
+          fi
+
+      - name: Create Pull Request
+        if: success() && steps.compare.outputs.is_newer == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.latest.outputs.tag }}
+          BASE: ${{ github.ref_name }}
+        run: |
+          BODY="Automated update from google/googlesql release $TAG. Replaced internal/cmd/updater/zetasql with googlesql at this tag; updated internal/ccall from Bazel export; bumped UPSTREAM_VERSION."
+          gh pr create --base "$BASE" --head "update-upstream-$TAG" --title "chore: update upstream to $TAG" --body "$BODY"
