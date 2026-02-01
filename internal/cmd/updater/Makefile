@@ -1,6 +1,6 @@
 CCALL_DIR := $(abspath $(CURDIR)/../../ccall)
 EXTERNAL_DIR := $(abspath $(CURDIR)/cache/external)
-OUT_DIR := $(abspath $(CURDIR)/cache/execroot/com_google_zetasql/bazel-out/k8-fastbuild/bin)
+OUT_DIR := $(abspath $(CURDIR)/cache/execroot/com_google_googlesql/bazel-out/k8-fastbuild/bin)
 OUT_EXTERNAL_DIR := $(OUT_DIR)/external
 
 build:
