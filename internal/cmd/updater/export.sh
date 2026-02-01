@@ -1,5 +1,6 @@
 #!/bin/bash
 
-BAZEL_ZETASQL=$(readlink bazel-zetasql)
-CACHE_ROOT=$BAZEL_ZETASQL/../../
+# Workspace symlink name matches repo (googlesql); readlink gives execroot path
+BAZEL_GOOGLESQL=$(readlink bazel-googlesql)
+CACHE_ROOT=$BAZEL_GOOGLESQL/../../
 cp -r $CACHE_ROOT/* /tmp/

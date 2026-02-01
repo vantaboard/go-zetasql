@@ -41,7 +41,7 @@ func outDir() string {
 	return filepath.Join(
 		cacheDir(),
 		"execroot",
-		"com_google_zetasql",
+		"com_google_googlesql",
 		"bazel-out",
 		"k8-fastbuild",
 		"bin",
@@ -106,10 +106,15 @@ func main() {
 		filepath.Join(ccallDir(), "zetasql"),
 		opt,
 	)
+	// Bazel output is under "googlesql/" (workspace name); copy into ccall as "zetasql/" for repo layout
+	outTree := "googlesql"
 	if err := filepath.Walk(
-		filepath.Join(outDir(), "zetasql"),
+		filepath.Join(outDir(), outTree),
 		func(path string, info fs.FileInfo, err error) error {
-			if info.IsDir() {
+			if err != nil {
+				return err
+			}
+			if info == nil || info.IsDir() {
 				return nil
 			}
 			if (info.Mode() & fs.ModeSymlink) != 0 {
@@ -118,8 +123,11 @@ func main() {
 			fileName := filepath.Base(path)
 			lastChar := fileName[len(fileName)-1]
 			if lastChar == 'h' || lastChar == 'c' {
-				idx := strings.LastIndex(path, "zetasql")
-				trimmedPath := path[idx:]
+				idx := strings.LastIndex(path, outTree)
+				if idx < 0 {
+					return nil
+				}
+				trimmedPath := "zetasql" + path[idx+len(outTree):]
 				dstFile := filepath.Join(ccallDir(), trimmedPath)
 				src, err := os.Open(path)
 				if err != nil {
