@@ -37,19 +37,54 @@ func externalDir() string {
 	return filepath.Join(cacheDir(), "external")
 }
 
-func outDir() string {
-	return filepath.Join(
-		cacheDir(),
-		"execroot",
-		"com_google_zetasql",
-		"bazel-out",
-		"k8-fastbuild",
-		"bin",
-	)
+func execrootDir() string {
+	return filepath.Join(cacheDir(), "execroot")
+}
+
+// discoverOutDir finds the bazel-out/.../bin directory under the single execroot.
+// Bazel execroot name and config (e.g. k8-fastbuild) can vary.
+func discoverOutDir() string {
+	entries, err := os.ReadDir(execrootDir())
+	if err != nil {
+		panic(err)
+	}
+	var foundBin string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		root := filepath.Join(execrootDir(), e.Name(), "bazel-out")
+		_ = filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
+			if err != nil || info == nil || !info.IsDir() || filepath.Base(path) != "bin" {
+				return nil
+			}
+			foundBin = path
+			return filepath.SkipAll
+		})
+		if foundBin != "" {
+			return foundBin
+		}
+	}
+	panic("no execroot/bazel-out/.../bin found under " + execrootDir())
 }
 
 func outExternalDir() string {
-	return filepath.Join(outDir(), "external")
+	return filepath.Join(discoverOutDir(), "external")
+}
+
+// discoverOutTree finds the workspace output dir under bin (e.g. googlesql or zetasql).
+func discoverOutTree(binDir string) string {
+	_, err := os.ReadDir(binDir)
+	if err != nil {
+		panic(err)
+	}
+	for _, name := range []string{"googlesql", "zetasql"} {
+		p := filepath.Join(binDir, name)
+		if st, err := os.Stat(p); err == nil && st.IsDir() {
+			return name
+		}
+	}
+	panic("no googlesql or zetasql dir under " + binDir)
 }
 
 var copyExternalLibMap = map[string]string{
@@ -106,10 +141,16 @@ func main() {
 		filepath.Join(ccallDir(), "zetasql"),
 		opt,
 	)
+	// Bazel output is under workspace-name/ (googlesql or zetasql); copy into ccall as zetasql/ for repo layout
+	outDir := discoverOutDir()
+	outTree := discoverOutTree(outDir)
 	if err := filepath.Walk(
-		filepath.Join(outDir(), "zetasql"),
+		filepath.Join(outDir, outTree),
 		func(path string, info fs.FileInfo, err error) error {
-			if info.IsDir() {
+			if err != nil {
+				return err
+			}
+			if info == nil || info.IsDir() {
 				return nil
 			}
 			if (info.Mode() & fs.ModeSymlink) != 0 {
@@ -118,8 +159,11 @@ func main() {
 			fileName := filepath.Base(path)
 			lastChar := fileName[len(fileName)-1]
 			if lastChar == 'h' || lastChar == 'c' {
-				idx := strings.LastIndex(path, "zetasql")
-				trimmedPath := path[idx:]
+				idx := strings.LastIndex(path, outTree)
+				if idx < 0 {
+					return nil
+				}
+				trimmedPath := "zetasql" + path[idx+len(outTree):]
 				dstFile := filepath.Join(ccallDir(), trimmedPath)
 				src, err := os.Open(path)
 				if err != nil {
