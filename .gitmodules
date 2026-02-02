@@ -1,3 +1,0 @@
-[submodule "internal/cmd/updater/zetasql"]
-	path = internal/cmd/updater/zetasql
-	url = https://github.com/google/zetasql.git
