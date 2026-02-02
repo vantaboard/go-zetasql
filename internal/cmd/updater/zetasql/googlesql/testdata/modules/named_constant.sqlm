@@ -1,3 +1,0 @@
-MODULE named_constant;
-
-CREATE PUBLIC CONSTANT foo = 'bar';
