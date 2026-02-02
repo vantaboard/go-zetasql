@@ -91,7 +91,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Create update branch and fetch googlesql at tag
+      - name: Create update branch and update submodule to tag
         if: steps.compare.outputs.is_newer == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
         run: |
           TAG="${{ steps.latest.outputs.tag }}"
@@ -99,20 +99,28 @@ jobs:
           git checkout -b "$BRANCH"
 
           ZETASQL_DIR="internal/cmd/updater/zetasql"
-          # Remove submodule so we can replace it with googlesql tree (tracked as normal files)
-          git submodule deinit -f "$ZETASQL_DIR" 2>/dev/null || true
-          git rm -f "$ZETASQL_DIR" 2>/dev/null || true
-          rm -rf "$ZETASQL_DIR" .git/modules/internal/cmd/updater/zetasql 2>/dev/null || true
-          if [ -f .gitmodules ]; then
-            git config -f .gitmodules --remove-section 'submodule.internal/cmd/updater/zetasql' 2>/dev/null || true
-            git add .gitmodules 2>/dev/null || true
+          GOOGLESQL_URL="https://github.com/google/googlesql.git"
+
+          if [ -f "$ZETASQL_DIR/.git" ] || [ -d "$ZETASQL_DIR/.git" ]; then
+            # Existing submodule: point remote at googlesql, fetch tag, checkout
+            cd "$ZETASQL_DIR"
+            git remote set-url origin "$GOOGLESQL_URL" 2>/dev/null || git remote add origin "$GOOGLESQL_URL"
+            git fetch origin tag "$TAG"
+            git checkout "$TAG"
+            cd - >/dev/null
+          else
+            # Full tree (from old workflow) or missing: remove if present, then add submodule at tag
+            git rm -rf "$ZETASQL_DIR" 2>/dev/null || rm -rf "$ZETASQL_DIR"
+            git submodule add "$GOOGLESQL_URL" "$ZETASQL_DIR"
+            cd "$ZETASQL_DIR"
+            git checkout "$TAG"
+            cd - >/dev/null
+            git add .gitmodules
           fi
 
-          git clone --depth 1 --branch "$TAG" https://github.com/google/googlesql.git "$ZETASQL_DIR"
-          rm -rf "$ZETASQL_DIR/.git"
-
+          git add "$ZETASQL_DIR"
           echo "${TAG#v}" > internal/cmd/updater/UPSTREAM_VERSION
-          git add "$ZETASQL_DIR" internal/cmd/updater/UPSTREAM_VERSION
+          git add internal/cmd/updater/UPSTREAM_VERSION
           git status
 
       - name: Build Docker image and export cache
@@ -145,5 +153,5 @@ jobs:
           TAG: ${{ steps.latest.outputs.tag }}
           BASE: ${{ github.ref_name }}
         run: |
-          BODY="Automated update from google/googlesql release $TAG. Replaced internal/cmd/updater/zetasql with googlesql at this tag; updated internal/ccall from Bazel export; bumped UPSTREAM_VERSION."
+          BODY="Automated update from google/googlesql release $TAG. Updated the internal/cmd/updater/zetasql submodule to this tag; regenerated internal/ccall from Bazel export; bumped UPSTREAM_VERSION."
           gh pr create --base "$BASE" --head "update-upstream-$TAG" --title "chore: update upstream to $TAG" --body "$BODY"
