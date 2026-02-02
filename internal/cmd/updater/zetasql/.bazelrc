@@ -1,0 +1,70 @@
+#
+# Copyright 2019 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# GoogleSQL requires c++20 support to match internal Google development
+# environments.
+# This is a special snowflake setting that bazel requires special handling for.
+
+# By default, we don't suppress any warnings, to get clang-specific warning
+# suppression you can invoke with --config=clang
+build:clang --action_env=BAZEL_CXXOPTS="-std=c++20"
+build:clang --cxxopt=-std=c++20
+build:clang --cxxopt=-Wno-module-import-in-extern-c
+build:clang --cxxopt=-Wno-deprecated-declarations
+build:clang --cxxopt=-Wno-range-loop-analysis
+build:clang --cxxopt=-Wno-inconsistent-missing-override
+build:clang --cxxopt=-Wno-char-subscripts
+build:clang --cxxopt=-Wno-enum-compare-switch
+build:clang --cxxopt=-Wno-deprecated-declarations
+build:clang --cxxopt=-Wno-defaulted-function-deleted
+build:clang --cxxopt=-Wno-unused-private-field
+build:clang --cxxopt=-Wno-return-std-move
+build:clang --cxxopt=-Wno-reorder-ctor
+build:clang --cxxopt=-Wno-unused-const-variable
+build:clang --cxxopt=-Wno-unused-function
+build:clang --cxxopt=-Wno-macro-redefined
+# Add this line to treat the specific warning as an error
+build:clang --cxxopt=-Werror=undefined-internal
+# By default, we don't suppress any warnings, to get g++-specific warning
+# suppression you can invoke with --config=g++
+build:g++ --action_env=BAZEL_CXXOPTS="-std=c++20"
+build:g++ --cxxopt=-std=c++20
+build:g++ --cxxopt=-Wno-sign-compare
+build:g++ --cxxopt=-Wno-switch
+build:g++ --cxxopt=-Wno-unused-function
+build:g++ --cxxopt=-Wno-unused-but-set-parameter
+build:g++ --cxxopt=-Wno-unused-but-set-variable
+build:g++ --cxxopt=-Wno-char-subscripts
+build:g++ --cxxopt=-Wno-nonnull-compare
+build:g++ --cxxopt=-Wno-return-type
+build:g++ --cxxopt=-Wno-class-memaccess
+build:g++ --cxxopt=-Wno-deprecated-declarations
+# For string_fortified
+build:g++ --cxxopt=-Wno-stringop-truncation
+
+# Specify the minimum supported version of macOS.
+build:darwin --cxxopt="-mmacosx-version-min=11.0"
+
+# C++20 is required to build GoogleSQL, hence `-cxxopt=-std=c++20`. On MacOS
+# `--host_cxxopt=-std=c++20` is also needed.
+# "--java_runtime_version=remotejdk_11": to make the build more hermetic.
+build --cxxopt=-std=c++20 --host_cxxopt=-std=c++20 --config=clang --java_runtime_version=remotejdk_11
+run --cxxopt=-std=c++20 --host_cxxopt=-std=c++20 --config=clang --java_runtime_version=remotejdk_11
+test --cxxopt=-std=c++20 --host_cxxopt=-std=c++20 --config=clang --java_runtime_version=remotejdk_11
+
+# Force Go to build in PIE mode to avoid "relocation R_X86_64_64" errors on
+# modern Linux environments where the LLVM toolchain enforces PIE.
+build --@io_bazel_rules_go//go/config:linkmode=pie
