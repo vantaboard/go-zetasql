@@ -9,8 +9,8 @@ ZetaSQL can parse all queries related to Cloud Spanner and BigQuery. This functi
 
 # Features
 
-- No need to install ZetaSQL library
-  - go-zetasql contains all the source code needed to build ZetaSQL and builds at `go get github.com/goccy/go-zetasql` timing. Therefore, there is no need to install dependent libraries separately.
+- Pre-built ZetaSQL artifacts (installer)
+  - Run the installer once to download the ZetaSQL C++ bindings for your platform; no need to build from source. Pre-built artifacts are published for each release (e.g. linux-amd64). See [Installation](#installation).
 
 - Can create a portable single binary even though it using cgo
   - You can create a static binary even with `CGO_ENABLED=1` by specifying the following options at build time: `--ldflags '-extldflags "-static"'`
@@ -44,11 +44,33 @@ Also, the compiler recommends `clang++`. Please set `CXX=clang++` to install.
 
 # Installation
 
-```
-go get github.com/goccy/go-zetasql
-```
+1. Add the module to your project:
 
-The first time you run it, it takes time to build all the ZetaSQL code used by go-zetasql.
+   ```
+   go get github.com/goccy/go-zetasql
+   ```
+
+2. Run the installer once so that the ZetaSQL C++ bindings (`internal/ccall`) are available. This downloads a pre-built artifact for your platform (e.g. linux-amd64, darwin-arm64) from GitHub releases:
+
+   ```
+   go run github.com/goccy/go-zetasql/cmd/install@latest
+   ```
+
+   Or pin to a specific version:
+
+   ```
+   go run github.com/goccy/go-zetasql/cmd/install@v0.1.0
+   ```
+
+   Optional: set `ZETASQL_CACHE_DIR` to change where artifacts are cached, or `ZETASQL_DOWNLOAD_BASE_URL` to use a custom download URL.
+
+3. If no pre-built artifact exists for your platform (e.g. unsupported OS/arch), build from source using the updater (Docker + Bazel):
+
+   ```
+   cd cmd/updater && make build && make export && make update
+   ```
+
+   See [cmd/updater](cmd/updater) for prerequisites.
 
 # Synopsis
 
@@ -159,7 +181,7 @@ fmt.Println(stmt.DebugString())
 
 Apache-2.0 License
 
-Since go-zetasql builds all source code including dependencies at install time, it directly contains the source code of the following libraries. Therefore, the license is set according to the license of the dependent library.
+When building from source (cmd/updater), go-zetasql uses the source code of the following libraries. Therefore, the license is set according to the license of the dependent library.
 
 - [zetasql](https://github.com/google/zetasql): [Apache License 2.0](https://github.com/google/zetasql/blob/master/LICENSE)
 - [abseil](https://github.com/abseil/abseil-cpp): [Apache License 2.0](https://github.com/abseil/abseil-cpp/blob/master/LICENSE)

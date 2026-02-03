@@ -53,7 +53,7 @@ jobs:
       - name: Read current upstream version
         id: current
         run: |
-          VERSION_FILE="internal/cmd/updater/UPSTREAM_VERSION"
+          VERSION_FILE="cmd/updater/UPSTREAM_VERSION"
           if [ -f "$VERSION_FILE" ]; then
             CURRENT=$(grep -v '^#' "$VERSION_FILE" | head -1 | tr -d '[:space:]')
             [ -z "$CURRENT" ] && CURRENT="0.0.0"
@@ -98,7 +98,7 @@ jobs:
           BRANCH="update-upstream-${TAG}"
           git checkout -b "$BRANCH"
 
-          ZETASQL_DIR="internal/cmd/updater/zetasql"
+          ZETASQL_DIR="cmd/updater/zetasql"
           GOOGLESQL_URL="https://github.com/google/googlesql.git"
 
           if [ -f "$ZETASQL_DIR/.git" ] || [ -d "$ZETASQL_DIR/.git" ]; then
@@ -119,27 +119,27 @@ jobs:
           fi
 
           git add "$ZETASQL_DIR"
-          echo "${TAG#v}" > internal/cmd/updater/UPSTREAM_VERSION
-          git add internal/cmd/updater/UPSTREAM_VERSION
+          echo "${TAG#v}" > cmd/updater/UPSTREAM_VERSION
+          git add cmd/updater/UPSTREAM_VERSION
           git status
 
       - name: Build Docker image and export cache
         if: steps.compare.outputs.is_newer == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
-        working-directory: internal/cmd/updater
+        working-directory: cmd/updater
         run: |
           make build
           make export
 
       - name: Run updater (copy to internal/ccall)
         if: steps.compare.outputs.is_newer == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
-        working-directory: internal/cmd/updater
+        working-directory: cmd/updater
         run: make update
 
       - name: Commit and push
         if: steps.compare.outputs.is_newer == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
         run: |
-          git add internal/ccall internal/cmd/updater/UPSTREAM_VERSION
-          git diff --staged --quiet && echo "No ccall changes" || true
+          git add cmd/updater/UPSTREAM_VERSION cmd/updater/zetasql
+          git diff --staged --quiet && echo "No changes" || true
           git status
           if ! git diff --staged --quiet; then
             git commit -m "chore: update upstream to ${{ steps.latest.outputs.tag }}"
@@ -153,5 +153,5 @@ jobs:
           TAG: ${{ steps.latest.outputs.tag }}
           BASE: ${{ github.ref_name }}
         run: |
-          BODY="Automated update from google/googlesql release $TAG. Updated the internal/cmd/updater/zetasql submodule to this tag; regenerated internal/ccall from Bazel export; bumped UPSTREAM_VERSION."
+          BODY="Automated update from google/googlesql release $TAG. Updated the cmd/updater/zetasql submodule to this tag; bumped UPSTREAM_VERSION. internal/ccall is no longer committed; use the installer or build from source with cmd/updater to obtain it."
           gh pr create --base "$BASE" --head "update-upstream-$TAG" --title "chore: update upstream to $TAG" --body "$BODY"

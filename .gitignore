@@ -26,3 +26,6 @@ full_export.inc
 
 *.txt
 *.cmake
+
+# ZetaSQL C++ bindings; populated by installer or build-from-source (cmd/updater)
+internal/ccall

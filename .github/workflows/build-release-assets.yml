@@ -1,0 +1,71 @@
+# Builds pre-built ZetaSQL artifacts (internal/ccall tree) per platform and uploads them as release assets.
+# Runs when a release is created (tag v*). Consumers use the installer to download these artifacts.
+name: Build release assets
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g. v0.1.0) to build for; leave empty to use the release tag"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux-amd64:
+    name: Build linux-amd64 artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.version || github.event.release.tag_name || github.ref }}
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ github.event.release.tag_name }}" ]; then
+            echo "version=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Version: ${{ steps.version.outputs.version }}"
+
+      - name: Build Docker image and export cache
+        working-directory: cmd/updater
+        run: |
+          make build
+          make export
+
+      - name: Run updater (copy to internal/ccall)
+        working-directory: cmd/updater
+        run: make update
+
+      - name: Create tarball
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          tar -czvf "zetasql-linux-amd64-${VERSION}.tar.gz" -C . internal/ccall
+          # Rename so tarball has top-level "ccall" for installer (extract expects ccall/)
+          mkdir -p dist
+          tar -xzf "zetasql-linux-amd64-${VERSION}.tar.gz" -C dist
+          mv dist/internal/ccall dist/ccall
+          rmdir dist/internal 2>/dev/null || true
+          tar -czvf "zetasql-linux-amd64-${VERSION}.tar.gz" -C dist ccall
+          ls -la "zetasql-linux-amd64-${VERSION}.tar.gz"
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          files: zetasql-linux-amd64-${{ steps.version.outputs.version }}.tar.gz
+          fail_on_unmatched: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
