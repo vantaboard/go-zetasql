@@ -82,6 +82,9 @@ func (i *Installer) Install() (string, error) {
 	i.log("Downloading GoogleSQL artifact", "version", i.version, "platform", platform)
 	body, err := downloadTarball(urls)
 	if err != nil {
+		if strings.Contains(err.Error(), "404") {
+			return "", fmt.Errorf("%w\n\nPre-built artifacts may not exist for version %s. Build from source: cd cmd/updater && make export && make update", err, i.version)
+		}
 		return "", err
 	}
 	if err := os.MkdirAll(extractDir, 0o755); err != nil {
@@ -186,6 +189,22 @@ func (i *Installer) log(msg string, args ...any) {
 			fmt.Fprintln(os.Stderr, "[go-zetasql install] "+msg)
 		}
 	}
+}
+
+// ResolveModuleVersion returns the version of the go-googlesql module when it is
+// a dependency (e.g. v0.1.0). Returns empty string when the current module is
+// go-googlesql itself (e.g. development in repo).
+func ResolveModuleVersion() string {
+	out, err := runGoList(modulePath, "{{.Version}}")
+	if err != nil {
+		return ""
+	}
+	v := strings.TrimSpace(string(out))
+	// "(devel)" or empty when we're inside the repo
+	if v == "" || v == "(devel)" || strings.HasPrefix(v, "v0.0.0-") {
+		return ""
+	}
+	return v
 }
 
 // ResolveModuleDir returns the directory of the go-zetasql module (e.g. in GOMODCACHE).

@@ -23,6 +23,12 @@ func main() {
 	if env := os.Getenv("ZETASQL_DOWNLOAD_BASE_URL"); env != "" && *baseURL == "" {
 		*baseURL = env
 	}
+	// Default version: use module version when available (consumer's go.mod), else DefaultVersion.
+	if *version == install.DefaultVersion {
+		if v := install.ResolveModuleVersion(); v != "" {
+			*version = v
+		}
+	}
 
 	opts := &install.InstallOptions{
 		CacheDir:      *cacheDir,
