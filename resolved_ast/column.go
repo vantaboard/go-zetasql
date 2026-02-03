@@ -3,9 +3,9 @@ package resolved_ast
 import (
 	"unsafe"
 
-	internal "github.com/goccy/go-zetasql/internal/ccall/go-zetasql"
-	"github.com/goccy/go-zetasql/internal/helper"
-	"github.com/goccy/go-zetasql/types"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	"github.com/vantaboard/go-googlesql/internal/helper"
+	"github.com/vantaboard/go-googlesql/types"
 )
 
 // Column a column produced by part of a query (e.g. a scan or subquery).

@@ -3,10 +3,10 @@ package zetasql
 import (
 	"unsafe"
 
-	internal "github.com/goccy/go-zetasql/internal/ccall/go-zetasql"
-	"github.com/goccy/go-zetasql/internal/helper"
-	"github.com/goccy/go-zetasql/resolved_ast"
-	"github.com/goccy/go-zetasql/types"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	"github.com/vantaboard/go-googlesql/internal/helper"
+	"github.com/vantaboard/go-googlesql/resolved_ast"
+	"github.com/vantaboard/go-googlesql/types"
 )
 
 // LanguageOptions contains options controlling the language that should be
@@ -45,7 +45,7 @@ func (o *LanguageOptions) SupportsStatementKind(kind resolved_ast.Kind) bool {
 // SetSupportedStatementKinds the provided set of resolved_ast.Kind indicates the statements
 // supported by the caller. The potentially supported statements are the
 // subclasses of StatementNode. An empty set indicates no restrictions. If
-// ZetaSQL encounters a statement kind that is not supported during
+// GoogleSQL encounters a statement kind that is not supported during
 // analysis, it immediately returns an error.
 //
 // By default, the set includes only resolved_ast.QueryStmt, so callers must
@@ -73,7 +73,7 @@ func (o *LanguageOptions) LanguageFeatureEnabled(feature LanguageFeature) bool {
 	return v
 }
 
-// SetLanguageVersion set the ZetaSQL LanguageVersion.
+// SetLanguageVersion set the GoogleSQL LanguageVersion.
 // This is equivalent to enabling the set of LanguageFeatures defined as part of that version,
 // and disabling all other LanguageFeatures.
 // The LanguageVersion itself is not stored.
@@ -119,14 +119,14 @@ func (o *LanguageOptions) DisableAllLanguageFeatures() {
 }
 
 // EnableMaximumLanguageFeatures enable all optional features and reservable keywords that are enabled in
-// the idealized ZetaSQL and are released to users.
+// the idealized GoogleSQL and are released to users.
 func (o *LanguageOptions) EnableMaximumLanguageFeatures() {
 	internal.LanguageOptions_EnableMaximumLanguageFeatures(o.raw)
 }
 
 // Enable all optional features and reservable keywords that are enabled in
-// the idealized ZetaSQL, including features that are still under
-// development. For internal ZetaSQL use only.
+// the idealized GoogleSQL, including features that are still under
+// development. For internal GoogleSQL use only.
 func (o *LanguageOptions) EnableMaximumLanguageFeaturesForDevelopment() {
 	internal.LanguageOptions_EnableMaximumLanguageFeaturesForDevelopment(o.raw)
 }

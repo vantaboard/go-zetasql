@@ -3,12 +3,12 @@ package resolved_ast
 import (
 	"unsafe"
 
-	internal "github.com/goccy/go-zetasql/internal/ccall/go-zetasql"
-	"github.com/goccy/go-zetasql/internal/helper"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	"github.com/vantaboard/go-googlesql/internal/helper"
 )
 
 // FunctionCallInfo contains custom information about a particular function call.
-// ZetaSQL passes it to the engine in the FunctionCallNode. Functions may
+// GoogleSQL passes it to the engine in the FunctionCallNode. Functions may
 // introduce subclasses of this class to add custom information as needed on a
 // per-function basis.
 type FunctionCallInfo struct {

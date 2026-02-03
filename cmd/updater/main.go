@@ -136,8 +136,16 @@ func main() {
 			opt,
 		)
 	}
+	// Upstream repo may have inner dir googlesql/ or zetasql/ (legacy)
+	srcRoot := filepath.Join(pkgDir(), "googlesql")
+	inner := "googlesql"
+	if _, err := os.Stat(filepath.Join(srcRoot, "googlesql")); err != nil {
+		if _, err := os.Stat(filepath.Join(srcRoot, "zetasql")); err == nil {
+			inner = "zetasql"
+		}
+	}
 	cp.Copy(
-		filepath.Join(pkgDir(), "zetasql", "zetasql"),
+		filepath.Join(srcRoot, inner),
 		filepath.Join(ccallDir(), "zetasql"),
 		opt,
 	)

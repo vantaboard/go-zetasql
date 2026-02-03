@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	// DefaultVersion is the default ZetaSQL artifact version (go-zetasql module version).
+	// DefaultVersion is the default GoogleSQL artifact version (go-zetasql module version).
 	// Override with InstallOptions.Version.
 	DefaultVersion = "v0.0.0"
-	modulePath     = "github.com/goccy/go-zetasql"
+	modulePath     = "github.com/vantaboard/go-googlesql"
 )
 
 // InstallOptions configures the installer.
@@ -31,7 +31,7 @@ type InstallOptions struct {
 	Verbose bool
 }
 
-// Installer downloads and installs pre-built ZetaSQL artifacts.
+// Installer downloads and installs pre-built GoogleSQL artifacts.
 type Installer struct {
 	opts    *InstallOptions
 	version string
@@ -79,7 +79,7 @@ func (i *Installer) Install() (string, error) {
 	if len(urls) == 0 {
 		return "", fmt.Errorf("no download URL for %s", platform)
 	}
-	i.log("Downloading ZetaSQL artifact", "version", i.version, "platform", platform)
+	i.log("Downloading GoogleSQL artifact", "version", i.version, "platform", platform)
 	body, err := downloadTarball(urls)
 	if err != nil {
 		return "", err
@@ -174,7 +174,7 @@ func (i *Installer) getDownloadURLs() []string {
 		return []string{base + "/" + name}
 	}
 	return []string{
-		fmt.Sprintf("https://github.com/goccy/go-zetasql/releases/download/%s/%s", i.version, name),
+		fmt.Sprintf("https://github.com/vantaboard/go-googlesql/releases/download/%s/%s", i.version, name),
 	}
 }
 
@@ -189,7 +189,7 @@ func (i *Installer) log(msg string, args ...any) {
 }
 
 // ResolveModuleDir returns the directory of the go-zetasql module (e.g. in GOMODCACHE).
-// It runs "go list -m -f '{{.Dir}}' github.com/goccy/go-zetasql" from the current directory.
+// It runs "go list -m -f '{{.Dir}}' github.com/vantaboard/go-googlesql" from the current directory.
 func ResolveModuleDir() (string, error) {
 	// Run from current dir so that if the user's project has go-zetasql in go.mod, we get that module's path.
 	out, err := runGoList(modulePath, "{{.Dir}}")

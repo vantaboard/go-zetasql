@@ -5951,7 +5951,7 @@
         - struct
         - string
         - struct
-    - name: SimpleCatalog_AddZetaSQLFunctions
+    - name: SimpleCatalog_AddGoogleSQLFunctions
       args:
         - struct
         - struct
@@ -6093,7 +6093,7 @@
         - struct
       ret:
         - string
-    - name: Function_IsZetaSQLBuiltin
+    - name: Function_IsGoogleSQLBuiltin
       args:
         - struct
       ret:

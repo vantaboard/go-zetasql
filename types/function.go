@@ -3,8 +3,8 @@ package types
 import (
 	"unsafe"
 
-	internal "github.com/goccy/go-zetasql/internal/ccall/go-zetasql"
-	"github.com/goccy/go-zetasql/internal/helper"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	"github.com/vantaboard/go-googlesql/internal/helper"
 )
 
 // FunctionArgumentTypeOptions specifies options on a function argument, including
@@ -847,7 +847,7 @@ func (f *Function) FullName(includeGroup bool) string {
 // set then it returns <sql_name>.  If <sql_name> is not set and Name() is
 // an internal function name (starting with '$'), then it strips off the '$'
 // and converts any '_' to ' '.  Otherwise it simply returns Name() for
-// ZetaSQL builtin functions and FullName() for non-builtin functions.
+// GoogleSQL builtin functions and FullName() for non-builtin functions.
 func (f *Function) SQLName() string {
 	var v unsafe.Pointer
 	internal.Function_SQLName(f.raw, &v)
@@ -872,9 +872,9 @@ func (f *Function) Group() string {
 	return helper.PtrToString(v)
 }
 
-func (f *Function) IsZetaSQLBuiltin() bool {
+func (f *Function) IsGoogleSQLBuiltin() bool {
 	var v bool
-	internal.Function_IsZetaSQLBuiltin(f.raw, &v)
+	internal.Function_IsGoogleSQLBuiltin(f.raw, &v)
 	return v
 }
 

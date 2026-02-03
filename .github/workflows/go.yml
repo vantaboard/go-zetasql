@@ -21,7 +21,7 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: ${{ matrix.go-version }}
-    - name: Install ZetaSQL artifacts
+    - name: Install GoogleSQL artifacts
       run: |
         if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
           cd cmd/updater && make build && make export && make update

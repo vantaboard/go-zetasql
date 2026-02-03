@@ -4,8 +4,8 @@ import (
 	"time"
 	"unsafe"
 
-	internal "github.com/goccy/go-zetasql/internal/ccall/go-zetasql"
-	"github.com/goccy/go-zetasql/internal/helper"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	"github.com/vantaboard/go-googlesql/internal/helper"
 )
 
 type Value interface {
@@ -92,10 +92,10 @@ type Value interface {
 	// representations:
 	//  1) Validated: JSON is parsed, validated and transformed into an efficient
 	//    (for field read/updates) in-memory representation (field tree) that can
-	//    be accessed through json_value() method. ZetaSQL Analyzer uses this
+	//    be accessed through json_value() method. GoogleSQL Analyzer uses this
 	//    representation by default to represent JSON values (e.g. literals).
 	//  2) Unparsed: string that was not validated and thus potentially can be
-	//    an invalid JSON. ZetaSQL Analyzer uses this representation when
+	//    an invalid JSON. GoogleSQL Analyzer uses this representation when
 	//    LanguageFeature FEATURE_JSON_NO_VALIDATION is enabled.
 	IsValidatedJSON() bool
 
@@ -204,9 +204,9 @@ type Value interface {
 	// STRUCT<a INT64, b STRING>(1, 'a'), and call GetSQL(), the result will
 	// be "(1, 'a')".  If we're only interested in the value itself and not the
 	// original type (with named fields) then maybe that's ok.  Note that
-	// GetSQLLiteral() is used in ZetaSQL's FORMAT() function implementation
+	// GetSQLLiteral() is used in GoogleSQL's FORMAT() function implementation
 	// (Format() in zetasql/public_functions/format.cc) so we cannot change
-	// the output without breaking existing ZetaSQL function semantics.
+	// the output without breaking existing GoogleSQL function semantics.
 	SQL(mode ProductMode) string
 
 	// SQLLiteral returns a SQL expression that is compatible as a literal for this value.

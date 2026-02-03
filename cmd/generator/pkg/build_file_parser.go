@@ -172,7 +172,7 @@ func (p *BuildFileParser) Parse(path string) (*ParsedFile, error) {
 }
 
 func (p *BuildFileParser) isExcludedPath(path string) bool {
-	for _, dir := range p.cfg.ExcludeZetaSQLDirs {
+	for _, dir := range p.cfg.ExcludeGoogleSQLDirs {
 		if strings.Contains(path, dir) {
 			return true
 		}

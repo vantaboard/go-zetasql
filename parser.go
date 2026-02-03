@@ -4,9 +4,9 @@ import "C"
 import (
 	"unsafe"
 
-	"github.com/goccy/go-zetasql/ast"
-	internal "github.com/goccy/go-zetasql/internal/ccall/go-zetasql"
-	"github.com/goccy/go-zetasql/internal/helper"
+	"github.com/vantaboard/go-googlesql/ast"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	"github.com/vantaboard/go-googlesql/internal/helper"
 )
 
 type ParserOptions struct {

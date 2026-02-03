@@ -1,28 +1,28 @@
 # go-zetasql
 
-![Go](https://github.com/goccy/go-zetasql/workflows/Go/badge.svg)
-[![GoDoc](https://godoc.org/github.com/goccy/go-zetasql?status.svg)](https://pkg.go.dev/github.com/goccy/go-zetasql?tab=doc)
+![Go](https://github.com/vantaboard/go-googlesql/workflows/Go/badge.svg)
+[![GoDoc](https://godoc.org/github.com/vantaboard/go-googlesql?status.svg)](https://pkg.go.dev/github.com/vantaboard/go-googlesql?tab=doc)
 
-Go bindings for [ZetaSQL](https://github.com/google/zetasql)
+Go bindings for [GoogleSQL](https://github.com/google/zetasql)
 
-ZetaSQL can parse all queries related to Cloud Spanner and BigQuery. This functionality is provided from the Go language using cgo. 
+GoogleSQL can parse all queries related to Cloud Spanner and BigQuery. This functionality is provided from the Go language using cgo. 
 
 # Features
 
-- Pre-built ZetaSQL artifacts (installer)
-  - Run the installer once to download the ZetaSQL C++ bindings for your platform; no need to build from source. Pre-built artifacts are published for each release (e.g. linux-amd64). See [Installation](#installation).
+- Pre-built GoogleSQL artifacts (installer)
+  - Run the installer once to download the GoogleSQL C++ bindings for your platform; no need to build from source. Pre-built artifacts are published for each release (e.g. linux-amd64). See [Installation](#installation).
 
 - Can create a portable single binary even though it using cgo
   - You can create a static binary even with `CGO_ENABLED=1` by specifying the following options at build time: `--ldflags '-extldflags "-static"'`
 
-- Can access all the APIs of the ZetaSQL parser
-  - The ZetaSQL parser is not publicly available, but it is available in go-zetasql
+- Can access all the APIs of the GoogleSQL parser
+  - The GoogleSQL parser is not publicly available, but it is available in go-zetasql
 
 - Can access analyzer APIs
 
 # Status
 
-In the features of ZetaSQL, you can use the functions of the following packages. Will be added sequentially.
+In the features of GoogleSQL, you can use the functions of the following packages. Will be added sequentially.
 
 | Package        | Supported  |
 | ----           | ----       |
@@ -47,19 +47,19 @@ Also, the compiler recommends `clang++`. Please set `CXX=clang++` to install.
 1. Add the module to your project:
 
    ```
-   go get github.com/goccy/go-zetasql
+   go get github.com/vantaboard/go-googlesql
    ```
 
-2. Run the installer once so that the ZetaSQL C++ bindings (`internal/ccall`) are available. This downloads a pre-built artifact for your platform (e.g. linux-amd64, darwin-arm64) from GitHub releases:
+2. Run the installer once so that the GoogleSQL C++ bindings (`internal/ccall`) are available. This downloads a pre-built artifact for your platform (e.g. linux-amd64, darwin-arm64) from GitHub releases:
 
    ```
-   go run github.com/goccy/go-zetasql/cmd/install@latest
+   go run github.com/vantaboard/go-googlesql/cmd/install@latest
    ```
 
    Or pin to a specific version:
 
    ```
-   go run github.com/goccy/go-zetasql/cmd/install@v0.1.0
+   go run github.com/vantaboard/go-googlesql/cmd/install@v0.1.0
    ```
 
    Optional: set `ZETASQL_CACHE_DIR` to change where artifacts are cached, or `ZETASQL_DOWNLOAD_BASE_URL` to use a custom download URL.
@@ -80,8 +80,8 @@ Also, the compiler recommends `clang++`. Please set `CXX=clang++` to install.
 package main
 
 import (
-  "github.com/goccy/go-zetasql"
-  "github.com/goccy/go-zetasql/ast"
+  "github.com/vantaboard/go-googlesql"
+  "github.com/vantaboard/go-googlesql/ast"
 )
 
 func main() {
@@ -104,8 +104,8 @@ package main
 import (
   "fmt"
 
-  "github.com/goccy/go-zetasql"
-  "github.com/goccy/go-zetasql/ast"
+  "github.com/vantaboard/go-googlesql"
+  "github.com/vantaboard/go-googlesql/ast"
 )
 
 func main() {
@@ -135,9 +135,9 @@ package main
 import (
   "fmt"
 
-  "github.com/goccy/go-zetasql"
-  "github.com/goccy/go-zetasql/resolved_ast"
-  "github.com/goccy/go-zetasql/types"
+  "github.com/vantaboard/go-googlesql"
+  "github.com/vantaboard/go-googlesql/resolved_ast"
+  "github.com/vantaboard/go-googlesql/types"
 )
 
 func main() {
@@ -149,7 +149,7 @@ func main() {
       types.NewSimpleColumn(tableName, "name", types.StringType()),
     }),
   )
-  catalog.AddZetaSQLBuiltinFunctions()
+  catalog.AddGoogleSQLBuiltinFunctions()
   out, err := zetasql.AnalyzeStatement("SELECT * FROM Samples WHERE id = 1000", catalog, nil)
   if err != nil {
     panic(err)

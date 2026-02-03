@@ -3,9 +3,9 @@ package zetasql_test
 import (
 	"testing"
 
-	"github.com/goccy/go-zetasql"
-	"github.com/goccy/go-zetasql/resolved_ast"
-	"github.com/goccy/go-zetasql/types"
+	"github.com/vantaboard/go-googlesql"
+	"github.com/vantaboard/go-googlesql/resolved_ast"
+	"github.com/vantaboard/go-googlesql/types"
 )
 
 type myCatalog struct {
@@ -161,7 +161,7 @@ func TestCatalog(t *testing.T) {
 	opt.SetLanguage(langOpt)
 
 	simpleCatalog := types.NewSimpleCatalog("simple")
-	simpleCatalog.AddZetaSQLBuiltinFunctions(langOpt.BuiltinFunctionOptions())
+	simpleCatalog.AddGoogleSQLBuiltinFunctions(langOpt.BuiltinFunctionOptions())
 	catalog := &myCatalog{
 		simpleCatalog: simpleCatalog,
 		tables: []types.Table{

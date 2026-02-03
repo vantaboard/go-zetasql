@@ -3,9 +3,9 @@ package resolved_ast
 import (
 	"unsafe"
 
-	internal "github.com/goccy/go-zetasql/internal/ccall/go-zetasql"
-	"github.com/goccy/go-zetasql/internal/helper"
-	"github.com/goccy/go-zetasql/types"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	"github.com/vantaboard/go-googlesql/internal/helper"
+	"github.com/vantaboard/go-googlesql/types"
 )
 
 type Node interface {
@@ -934,7 +934,7 @@ func (n *ExtendedCastNode) AddElement(v *ExtendedCastElementNode) {
 //
 // Valid casts are defined in the CastHashMap, which identifies
 // valid from-Type, to-Type pairs.
-// Consumers can access it through ZetaSQLCasts().
+// Consumers can access it through GoogleSQLCasts().
 type CastNode struct {
 	*BaseExprNode
 }
@@ -1090,7 +1090,7 @@ type MakeProtoFieldNode struct {
 }
 
 // Format provides the Format annotation that should be used when building this field.
-// The annotation specifies both the ZetaSQL type and the encoding format for this field.
+// The annotation specifies both the GoogleSQL type and the encoding format for this field.
 func (n *MakeProtoFieldNode) Format() FieldFormat {
 	var v int
 	internal.ResolvedMakeProtoField_format(n.raw, &v)
@@ -1191,7 +1191,7 @@ func (n *GetProtoFieldNode) SetHasBit(v bool) {
 }
 
 // Format provides the Format annotation that should be used when reading
-// this field.  The annotation specifies both the ZetaSQL type and
+// this field.  The annotation specifies both the GoogleSQL type and
 // the encoding format for this field. This cannot be set when
 // HasBit is true.
 func (n *GetProtoFieldNode) Format() FieldFormat {
@@ -1390,7 +1390,7 @@ func (n *ReplaceFieldNode) SetExpr(v ExprNode) {
 //
 // Engines must check at evaluation time that the modifications in
 // ReplaceFieldItemList obey the following rules
-// regarding updating protos in ZetaSQL:
+// regarding updating protos in GoogleSQL:
 // - Modifying a subfield of a NULL-valued proto-valued field is an error.
 // - Clearing a required field or subfield is an error.
 func (n *ReplaceFieldNode) ReplaceFieldItemList() []*ReplaceFieldItemNode {
@@ -2439,7 +2439,7 @@ func (n *OrderByScanNode) AddOrderByItem(v *OrderByItemNode) {
 //
 // The arguments to LIMIT <int64> OFFSET <int64> must be non-negative
 // integer literals or (possibly casted) query parameters.  Query
-// parameter values must be checked at run-time by ZetaSQL compliant
+// parameter values must be checked at run-time by GoogleSQL compliant
 // backend systems.
 //
 // OFFSET is optional and the absence of OFFSET implies OFFSET 0.
@@ -3725,7 +3725,7 @@ func (n *FunctionArgumentNode) SetInlineLambda(v *InlineLambdaNode) {
 	internal.ResolvedFunctionArgument_set_inline_lambda(n.raw, v.getRaw())
 }
 
-// StatementNode the base node of all ZetaSQL statements.
+// StatementNode the base node of all GoogleSQL statements.
 type StatementNode interface {
 	Node
 	HintList() []*OptionNode
@@ -4659,7 +4659,7 @@ func (n *CreateTableAsSelectStmtNode) SetQuery(v ScanNode) {
 //     +-AnalyticFunctionGroup
 //       +-analytic_function_list=
 //         +-d#5 :=
-//           +-AnalyticFunctionCall(ZetaSQL:max(INT64) -> INT64)
+//           +-AnalyticFunctionCall(GoogleSQL:max(INT64) -> INT64)
 //             +-ColumnRef(type=INT64, column=Z.c#3)
 //             +-window_frame=
 //               +-WindowFrame(frame_unit=ROWS)
@@ -5386,7 +5386,7 @@ func (n *ShowStmtNode) SetLikeExpr(v *LiteralNode) {
 //                   READ REPEATABLE
 //                   SERIALIZABLE
 //
-//       or could be arbitrary strings. ZetaSQL does not validate that
+//       or could be arbitrary strings. GoogleSQL does not validate that
 //       the string is valid.
 type BeginStmtNode struct {
 	*BaseStatementNode
@@ -5439,7 +5439,7 @@ func (n *BeginStmtNode) AddIsolationLevel(v string) {
 //                   READ REPEATABLE
 //                   SERIALIZABLE
 //
-//       or could be arbitrary strings. ZetaSQL does not validate that
+//       or could be arbitrary strings. GoogleSQL does not validate that
 //       the string is valid.
 type SetTransactionStmtNode struct {
 	*BaseStatementNode
@@ -5698,7 +5698,7 @@ type RecursiveRefScanNode struct {
 //   produced (step 1, plus all iterations of step 2).
 //
 // RecursiveScanNode only supports a recursive WITH entry which
-//   directly references itself; ZetaSQL does not support mutual recursion
+//   directly references itself; GoogleSQL does not support mutual recursion
 //   between multiple with-clause elements.
 type RecursiveScanNode struct {
 	*BaseScanNode
@@ -5759,11 +5759,11 @@ func (n *RecursiveScanNode) SetRecursiveTerm(v *SetOperationItemNode) {
 // be used to connect the WithRefScanNode to the original query
 // definition.  The subqueries are not inlined and duplicated into the tree.
 //
-// In ZetaSQL 1.0, WITH is allowed only on the outermost query and not in
+// In GoogleSQL 1.0, WITH is allowed only on the outermost query and not in
 // subqueries, so the WithScanNode node can only occur as the outermost
 // scan in a statement (e.g. a QueryStmt or CreateTableAsSelectStmt).
 //
-// In ZetaSQL 1.1 (language option FEATURE_V_1_1_WITH_ON_SUBQUERY), WITH
+// In GoogleSQL 1.1 (language option FEATURE_V_1_1_WITH_ON_SUBQUERY), WITH
 // is allowed on subqueries.  Then, WithScanNode can occur anywhere in
 // the tree.  The alias introduced by a WithEntryNode is visible only
 // in subsequent WithEntryNode queries and in <query>.  The aliases used
@@ -5772,7 +5772,7 @@ func (n *RecursiveScanNode) SetRecursiveTerm(v *SetOperationItemNode) {
 // unique, it is legal to collect all WithEntriesNode in the tree and
 // treat them as if they were a single WITH clause at the outermost level.
 //
-// In ZetaSQL 1.3 (language option FEATURE_V_1_3_WITH_RECURSIVE), WITH
+// In GoogleSQL 1.3 (language option FEATURE_V_1_3_WITH_RECURSIVE), WITH
 // RECURSIVE is supported, which allows any <with_subquery> to reference
 // any <with_query_name>, regardless of order, including WITH entries which
 // reference themself. Circular dependency chains of WITH entries are allowed
@@ -8770,7 +8770,7 @@ func (n *CreateConstantStmtNode) SetExpr(v ExprNode) {
 //   <name_path> is the identifier path of the function.
 //   <has_explicit_return_type> is true iff RETURNS clause is present.
 //   <return_type> is the return type for the function, which can be any
-//          valid ZetaSQL type, including ARRAY or STRUCT. It is inferred
+//          valid GoogleSQL type, including ARRAY or STRUCT. It is inferred
 //          from <function_expression> if not explicitly set.
 //          TODO: Deprecate and remove this. The return type is
 //          already specified by the <signature>.
@@ -9179,7 +9179,7 @@ func (n *ArgumentRefNode) SetArgumentKind(v ArgumentKind) {
 // parameter, this is written as an argument of type "TABLE" where the table
 // contains a single anonymous column with a type but no name. In this case,
 // calls to the function may pass a (regular or value) table with a single
-// (named or unnamed) column for any of these parameters, and ZetaSQL
+// (named or unnamed) column for any of these parameters, and GoogleSQL
 // accepts these arguments as long as the column type matches.
 //
 // Similarly, if the CREATE TABLE FUNCTION statement includes a "RETURNS
@@ -9193,17 +9193,17 @@ func (n *ArgumentRefNode) SetArgumentKind(v ArgumentKind) {
 // Templated Table-Valued Functions
 // --------------------------------
 //
-// ZetaSQL supports table-valued function declarations with parameters of
+// GoogleSQL supports table-valued function declarations with parameters of
 // type ANY TABLE. This type indicates that any schema is valid for tables
 // passed for this parameter. In this case:
 //
 // * the IsTemplated() method of the <signature> field returns true,
 // * the <output_column_list> field is empty,
 // * the <is_value_table> field is set to a default value of false (since
-//   ZetaSQL cannot analyze the function body in the presence of templated
+//   GoogleSQL cannot analyze the function body in the presence of templated
 //   parameters, it is not possible to detect this property yet),
 //
-// TODO: Update this description once ZetaSQL supports more types
+// TODO: Update this description once GoogleSQL supports more types
 // of templated function parameters. Currently only ANY TABLE is supported.
 type CreateTableFunctionStmtNode struct {
 	*BaseCreateStatementNode

@@ -3,9 +3,9 @@ package zetasql_test
 import (
 	"testing"
 
-	"github.com/goccy/go-zetasql"
-	"github.com/goccy/go-zetasql/resolved_ast"
-	"github.com/goccy/go-zetasql/types"
+	"github.com/vantaboard/go-googlesql"
+	"github.com/vantaboard/go-googlesql/resolved_ast"
+	"github.com/vantaboard/go-googlesql/types"
 )
 
 func TestNodeMap(t *testing.T) {
@@ -17,7 +17,7 @@ func TestNodeMap(t *testing.T) {
 			types.NewSimpleColumn(tableName, "col2", types.StringType()),
 		}),
 	)
-	catalog.AddZetaSQLBuiltinFunctions(nil)
+	catalog.AddGoogleSQLBuiltinFunctions(nil)
 	langOpt := zetasql.NewLanguageOptions()
 	langOpt.SetNameResolutionMode(zetasql.NameResolutionDefault)
 	langOpt.SetProductMode(types.ProductExternal)

@@ -10,7 +10,7 @@ type Config struct {
 	TopLevelNamespaces              []string               `yaml:"top_level_namespaces"`
 	ConflictSymbols                 []ConflictSymbol       `yaml:"conflict_symbols"`
 	AddSources                      []SourceConfig         `yaml:"add_sources"`
-	ExcludeZetaSQLDirs              []string               `yaml:"exclude_zetasql_dirs"`
+	ExcludeGoogleSQLDirs              []string               `yaml:"exclude_zetasql_dirs"`
 	ProtobufInternalExportNameFiles []string               `yaml:"protobuf_internal_export_name_files"`
 	CCLib                           CCLibConfig            `yaml:"cclib"`
 	Protoc                          []ProtocConfig         `yaml:"protoc"`

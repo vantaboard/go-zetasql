@@ -6,8 +6,8 @@ import (
 	"sync"
 	"unsafe"
 
-	internal "github.com/goccy/go-zetasql/internal/ccall/go-zetasql"
-	"github.com/goccy/go-zetasql/internal/helper"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	"github.com/vantaboard/go-googlesql/internal/helper"
 )
 
 import "C"
@@ -593,7 +593,7 @@ func (c *SimpleCatalog) AddConstantWithName(name string, cons Constant) {
 	internal.SimpleCatalog_AddConstantWithName(c.raw, helper.StringToPtr(name), cons.getRaw())
 }
 
-func (c *SimpleCatalog) AddZetaSQLBuiltinFunctions(opt *BuiltinFunctionOptions) {
+func (c *SimpleCatalog) AddGoogleSQLBuiltinFunctions(opt *BuiltinFunctionOptions) {
 	if opt == nil {
 		var langOpt unsafe.Pointer
 		internal.LanguageOptions_new(&langOpt)
@@ -602,7 +602,7 @@ func (c *SimpleCatalog) AddZetaSQLBuiltinFunctions(opt *BuiltinFunctionOptions) 
 		internal.BuiltinFunctionOptions_new(langOpt, &out)
 		opt = &BuiltinFunctionOptions{raw: out}
 	}
-	internal.SimpleCatalog_AddZetaSQLFunctions(c.raw, opt.raw)
+	internal.SimpleCatalog_AddGoogleSQLFunctions(c.raw, opt.raw)
 }
 
 var (

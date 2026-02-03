@@ -5,7 +5,7 @@ import (
 	"errors"
 	"unsafe"
 
-	internal "github.com/goccy/go-zetasql/internal/ccall/go-zetasql/parser/parser"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql/parser/parser"
 )
 
 type Status struct {

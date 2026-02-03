@@ -3,7 +3,7 @@ package types_test
 import (
 	"testing"
 
-	"github.com/goccy/go-zetasql/types"
+	"github.com/vantaboard/go-googlesql/types"
 )
 
 func TestCatalog(t *testing.T) {
@@ -16,7 +16,7 @@ func TestCatalog(t *testing.T) {
 			types.NewSimpleColumn(tableName, "col2", types.StringType()),
 		}),
 	)
-	catalog.AddZetaSQLBuiltinFunctions()
+	catalog.AddGoogleSQLBuiltinFunctions()
 	tables, err := catalog.Tables()
 	if err != nil {
 		t.Fatal(err)

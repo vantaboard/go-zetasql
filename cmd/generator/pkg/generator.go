@@ -714,7 +714,7 @@ func (g *Generator) createRootBindGoParam(cxxflags, ldflags []string) *BindGoPar
 				continue
 			}
 			goPkgPath := normalizeGoPkgPath(dep)
-			libName := fmt.Sprintf("github.com/goccy/go-zetasql/internal/ccall/%s", goPkgPath)
+			libName := fmt.Sprintf("github.com/vantaboard/go-googlesql/internal/ccall/%s", goPkgPath)
 			param.ImportGoLibs = append(param.ImportGoLibs, libName)
 			basePkg := filepath.Base(goPkgPath)
 			bridgeHeader := filepath.Join(ccallDir, goPkgPath, "bridge.h")
@@ -771,7 +771,7 @@ func (g *Generator) createBindGoParam(lib *Lib, cxxflags, ldflags []string) *Bin
 			continue
 		}
 		goPkgPath := normalizeGoPkgPath(dep)
-		libName := fmt.Sprintf("github.com/goccy/go-zetasql/internal/ccall/%s", goPkgPath)
+		libName := fmt.Sprintf("github.com/vantaboard/go-googlesql/internal/ccall/%s", goPkgPath)
 		importGoLibs = append(importGoLibs, libName)
 		basePkg := filepath.Base(goPkgPath)
 		bridgeHeaders = append(bridgeHeaders, filepath.Join(ccallDir, goPkgPath, "bridge.h"))

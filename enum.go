@@ -105,7 +105,7 @@ const (
 
 	// If enabled, give an error on GROUP BY, DISTINCT or set operations (other
 	// than UNION ALL) on floating point types. This feature is disabled in the
-	// idealized ZetaSQL (i.e. LanguageOptions::EnableMaximumLanguageFeatures)
+	// idealized GoogleSQL (i.e. LanguageOptions::EnableMaximumLanguageFeatures)
 	// because enabling it turns off support for a feature that is normally on by default.
 	FeatureDisallowGroupByFloat LanguageFeature = 3
 
@@ -686,9 +686,9 @@ const (
 
 	// EXPERIMENTAL FEATURES
 	// These are features supported in the code that are not currently part of
-	// officially supported ZetaSQL as of any version.
+	// officially supported GoogleSQL as of any version.
 
-	// Enable ZetaSQL MODULES.  For an engine to fully opt into this feature,
+	// Enable GoogleSQL MODULES.  For an engine to fully opt into this feature,
 	// they must enable this feature flag and add support for the related
 	// StatementKinds: ImportStmtNode and ModuleStmtNode.
 	FeatureExperimentalModules LanguageFeature = 999002
@@ -702,7 +702,7 @@ const (
 	FeatureTestIdeallyDisabledAndInDevelopment LanguageFeature = 999993
 )
 
-// LanguageVersion ZetaSQL language versions.
+// LanguageVersion GoogleSQL language versions.
 //
 // A language version defines a stable set of features and required semantics.
 // LanguageVersion VersionXY implicitly includes the LanguageFeatures below

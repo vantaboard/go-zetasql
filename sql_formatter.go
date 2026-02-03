@@ -4,18 +4,18 @@ import "C"
 import (
 	"unsafe"
 
-	internal "github.com/goccy/go-zetasql/internal/ccall/go-zetasql"
-	"github.com/goccy/go-zetasql/internal/helper"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	"github.com/vantaboard/go-googlesql/internal/helper"
 )
 
-// FormatSQL formats ZetaSQL statements.
+// FormatSQL formats GoogleSQL statements.
 // Multiple statements separated by semi-colons are supported.
 //
 // On return, the first return value is always populated with equivalent SQL.
 // The returned error contains the concatenation of any errors that
 // occurred while parsing the statements.
 //
-// Any statements that fail to parse as valid ZetaSQL are returned unchanged.
+// Any statements that fail to parse as valid GoogleSQL are returned unchanged.
 // All valid statements will be reformatted.
 //
 // CAVEATS:

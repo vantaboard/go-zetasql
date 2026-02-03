@@ -27,5 +27,8 @@ full_export.inc
 *.txt
 *.cmake
 
-# ZetaSQL C++ bindings; populated by installer or build-from-source (cmd/updater)
+# GoogleSQL C++ bindings; populated by installer or build-from-source (cmd/updater)
 internal/ccall
+
+# GoogleSQL upstream; cloned at build time in cmd/updater, never committed
+cmd/updater/googlesql

@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y make g++ git py
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 100
 RUN go install github.com/bazelbuild/bazelisk@v1.19.0 && ln -s /go/bin/bazelisk /usr/local/bin/bazel
 
-COPY zetasql /googlesql
+COPY googlesql /googlesql
 
 WORKDIR /googlesql
 

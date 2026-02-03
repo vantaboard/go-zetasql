@@ -3,9 +3,9 @@ package zetasql_test
 import (
 	"testing"
 
-	"github.com/goccy/go-zetasql"
-	ast "github.com/goccy/go-zetasql/resolved_ast"
-	"github.com/goccy/go-zetasql/types"
+	"github.com/vantaboard/go-googlesql"
+	ast "github.com/vantaboard/go-googlesql/resolved_ast"
+	"github.com/vantaboard/go-googlesql/types"
 )
 
 func TestAnalyzer(t *testing.T) {
@@ -17,7 +17,7 @@ func TestAnalyzer(t *testing.T) {
 			types.NewSimpleColumn(tableName, "col2", types.StringType()),
 		}),
 	)
-	catalog.AddZetaSQLBuiltinFunctions(nil)
+	catalog.AddGoogleSQLBuiltinFunctions(nil)
 	langOpt := zetasql.NewLanguageOptions()
 	langOpt.SetNameResolutionMode(zetasql.NameResolutionDefault)
 	langOpt.SetProductMode(types.ProductExternal)
@@ -79,7 +79,7 @@ func TestAnalyzer(t *testing.T) {
 	}
 	funcCall := filter.FilterExpr().(*ast.FunctionCallNode)
 	fn := funcCall.Function()
-	if !fn.IsZetaSQLBuiltin() || fn.Name() != "$equal" {
+	if !fn.IsGoogleSQLBuiltin() || fn.Name() != "$equal" {
 		t.Fatalf("failed to get function: %s", fn.Name())
 	}
 	fnArgs := funcCall.ArgumentList()
@@ -108,7 +108,7 @@ func TestAnalyzeMultiStatements(t *testing.T) {
 	langOpt.SetProductMode(types.ProductExternal)
 	langOpt.EnableMaximumLanguageFeatures()
 	langOpt.SetSupportedStatementKinds([]ast.Kind{ast.CreateFunctionStmt, ast.QueryStmt})
-	catalog.AddZetaSQLBuiltinFunctions(langOpt.BuiltinFunctionOptions())
+	catalog.AddGoogleSQLBuiltinFunctions(langOpt.BuiltinFunctionOptions())
 	opt := zetasql.NewAnalyzerOptions()
 	opt.SetAllowUndeclaredParameters(true)
 	opt.SetLanguage(langOpt)

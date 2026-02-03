@@ -37,7 +37,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
 
       - name: Get latest GoogleSQL release
         id: latest
@@ -91,42 +90,21 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Create update branch and update submodule to tag
+      - name: Create update branch and bump UPSTREAM_VERSION
         if: steps.compare.outputs.is_newer == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
         run: |
           TAG="${{ steps.latest.outputs.tag }}"
           BRANCH="update-upstream-${TAG}"
           git checkout -b "$BRANCH"
-
-          ZETASQL_DIR="cmd/updater/zetasql"
-          GOOGLESQL_URL="https://github.com/google/googlesql.git"
-
-          if [ -f "$ZETASQL_DIR/.git" ] || [ -d "$ZETASQL_DIR/.git" ]; then
-            # Existing submodule: point remote at googlesql, fetch tag, checkout
-            cd "$ZETASQL_DIR"
-            git remote set-url origin "$GOOGLESQL_URL" 2>/dev/null || git remote add origin "$GOOGLESQL_URL"
-            git fetch origin tag "$TAG"
-            git checkout "$TAG"
-            cd - >/dev/null
-          else
-            # Full tree (from old workflow) or missing: remove if present, then add submodule at tag
-            git rm -rf "$ZETASQL_DIR" 2>/dev/null || rm -rf "$ZETASQL_DIR"
-            git submodule add "$GOOGLESQL_URL" "$ZETASQL_DIR"
-            cd "$ZETASQL_DIR"
-            git checkout "$TAG"
-            cd - >/dev/null
-            git add .gitmodules
-          fi
-
-          git add "$ZETASQL_DIR"
           echo "${TAG#v}" > cmd/updater/UPSTREAM_VERSION
           git add cmd/updater/UPSTREAM_VERSION
           git status
 
-      - name: Build Docker image and export cache
+      - name: Clone googlesql and build
         if: steps.compare.outputs.is_newer == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
         working-directory: cmd/updater
         run: |
+          make clone-googlesql
           make build
           make export
 
@@ -138,7 +116,7 @@ jobs:
       - name: Commit and push
         if: steps.compare.outputs.is_newer == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
         run: |
-          git add cmd/updater/UPSTREAM_VERSION cmd/updater/zetasql
+          git add cmd/updater/UPSTREAM_VERSION
           git diff --staged --quiet && echo "No changes" || true
           git status
           if ! git diff --staged --quiet; then
@@ -153,5 +131,5 @@ jobs:
           TAG: ${{ steps.latest.outputs.tag }}
           BASE: ${{ github.ref_name }}
         run: |
-          BODY="Automated update from google/googlesql release $TAG. Updated the cmd/updater/zetasql submodule to this tag; bumped UPSTREAM_VERSION. internal/ccall is no longer committed; use the installer or build from source with cmd/updater to obtain it."
+          BODY="Automated update from google/googlesql release $TAG. Bumped UPSTREAM_VERSION. googlesql is cloned at build time (not a submodule). internal/ccall is not committed; use the installer or build from source with cmd/updater to obtain it."
           gh pr create --base "$BASE" --head "update-upstream-$TAG" --title "chore: update upstream to $TAG" --body "$BODY"
