@@ -1,0 +1,28 @@
+---
+description: Prefer text symbols over emojis in all output
+globs:
+alwaysApply: true
+---
+
+# No Emojis Policy
+
+* No emojis in any output (including headings, bullets, code comments, commit messages, and docs).
+* If you feel tempted to use an emoji, replace it with one of: ✓, ✗, [!], [i], ->, *, [OK], [X], [DONE], [NOTE].
+* Prefer ASCII bracket tags ([OK], [X], [!], [NOTE]) when the output may be used in terminals, PDFs, or plain text.
+* **Do not use action or semantic tags** (e.g., `[SEARCH]`, `[RUN]`, `[START]`, `[DOCS]`, `[SUMMARY]`, `[STATS]`) in place of words.
+* Actions, sections, and meanings must be expressed using clear descriptive text (e.g., "Searching for CSV files", "Documentation", "Summary", "Statistics").
+
+## Symbol Reference
+
+| Instead of | Use |
+|------------|-----|
+| ✅ 🎉 👍 | ✓ or [OK] or [DONE] |
+| ❌ 🚫 👎 | ✗ or [X] or [FAIL] |
+| ⚠️ 🔔 | [!] or [WARN] |
+| ℹ️ 💡 | [i] or [NOTE] or [INFO] |
+| ➡️ 👉 | -> |
+| 📝 📋 | * or - |
+| 🔍 🔎 | Use descriptive text (e.g., "Searching for files"); symbols may be used sparingly in headings |
+| 📖 📚 | Use descriptive text (e.g., "Documentation", "References") |
+| 🚀 ⚡ | Use verbs (e.g., "Start", "Run") |
+| 📊 | Use descriptive text (e.g., "Summary", "Statistics") |

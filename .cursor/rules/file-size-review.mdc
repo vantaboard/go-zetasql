@@ -1,0 +1,72 @@
+# File Size Review
+
+When editing or creating files that reach or exceed 700 lines, evaluate whether the file should be split into smaller, more focused modules.
+
+## When to Evaluate
+
+- File reaches ~700 lines during editing
+- File already exceeds 700 lines when opened
+- Adding significant new code to a large file
+
+## Questions to Consider
+
+1. **Single Responsibility**: Does this file handle multiple distinct concerns?
+2. **Logical Groupings**: Are there clear sections that could stand alone?
+3. **Reusability**: Are there utilities/helpers that other files might need?
+4. **Testing**: Would smaller files make unit testing easier?
+5. **Navigation**: Is it hard to find things in this file?
+
+## When Splitting Makes Sense
+
+- Multiple unrelated types/interfaces in one file -> separate type files
+- Helper functions used by one main export -> `utils.ts` or `helpers.ts`
+- Multiple components in one file -> one component per file
+- Large switch statements or config objects -> separate config files
+- Test fixtures/mock data -> dedicated fixtures directory
+
+## When NOT to Split
+
+- File is large but cohesive (single responsibility, tightly coupled code)
+- Splitting would create circular dependencies
+- Code is temporary or in active flux
+
+## Note on Data/Fixture Files
+
+Data and fixture files should also be split when large. Organize by:
+- Data source (API endpoint, database table)
+- Entity type (users, reports, settings)
+- Test scenario (happy path, error cases, edge cases)
+- Feature area
+
+Smaller, focused data files reduce cognitive load and make LLM context more efficient.
+
+## How to Split
+
+1. Identify logical boundaries
+2. Create new files with clear, descriptive names
+3. Move code incrementally, fixing imports as you go
+4. Ensure no circular dependencies are introduced
+5. Update barrel exports (`index.ts`) if applicable
+6. Run tests to verify nothing broke
+
+## Example Patterns
+
+```
+# Before (one large file)
+features/reports/utils.ts (900 lines)
+
+# After (split by concern)
+features/reports/utils/index.ts
+features/reports/utils/transform.ts
+features/reports/utils/validate.ts
+features/reports/utils/format.ts
+```
+
+## Action
+
+When encountering a 700+ line file, briefly note:
+- Whether splitting is recommended
+- What the logical divisions would be
+- Or why keeping it as-is makes sense
+
+Do not split files automatically - discuss with the user first if refactoring is warranted.
