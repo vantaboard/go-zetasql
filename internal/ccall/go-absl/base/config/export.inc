@@ -1,3 +1,0 @@
-#ifndef ABSL_BASE_CONFIG_EXPORT_H
-#define ABSL_BASE_CONFIG_EXPORT_H
-#endif
