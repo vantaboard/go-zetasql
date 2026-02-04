@@ -1,23 +1,28 @@
+# Release: determine version (dry run), build release assets, then create release and upload assets.
+# Only runs on push to main. Build must succeed before the release is created.
 name: release
+
 on:
   push:
     branches:
       - main
+
 permissions:
   contents: write
+
 jobs:
-  release:
-    name: Determine version and create release
+  version:
+    name: Determine next version
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.semrel.outputs.version }}
     steps:
-      - name: checkout
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-      - name: semantic-release
+      - name: semantic-release (dry run)
         id: semrel
         uses: go-semantic-release/action@v1
         with:
@@ -25,6 +30,77 @@ jobs:
           allow-initial-development-versions: true
           changelog-file: CHANGELOG.md
           force-bump-patch-version: true
+          dry: true
+
+  build-assets:
+    name: Build release assets
+    needs: version
+    if: needs.version.outputs.version != ''
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Clone googlesql at pinned commit
+        working-directory: cmd/updater
+        run: |
+          make clone-googlesql
+          ls -la googlesql
+
+      - name: Build Docker image and export cache
+        working-directory: cmd/updater
+        run: |
+          make build
+          make export
+
+      - name: Run updater (copy to internal/ccall)
+        working-directory: cmd/updater
+        run: make update
+
+      - name: Create tarball
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          tar -czvf "googlesql-linux-amd64-${VERSION}.tar.gz" -C . internal/ccall
+          mkdir -p dist
+          tar -xzf "googlesql-linux-amd64-${VERSION}.tar.gz" -C dist
+          mv dist/internal/ccall dist/ccall
+          rmdir dist/internal 2>/dev/null || true
+          cp LICENSE NOTICE dist/
+          tar -czvf "googlesql-linux-amd64-${VERSION}.tar.gz" -C dist ccall LICENSE NOTICE
+          ls -la "googlesql-linux-amd64-${VERSION}.tar.gz"
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-tarball-${{ needs.version.outputs.version }}
+          path: googlesql-linux-amd64-${{ needs.version.outputs.version }}.tar.gz
+
+  release:
+    name: Create release and upload assets
+    needs: build-assets
+    if: needs.build-assets.outputs.version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: semantic-release (create tag and GitHub Release)
+        id: semrel
+        uses: go-semantic-release/action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-initial-development-versions: true
+          changelog-file: CHANGELOG.md
+          force-bump-patch-version: true
+
       - name: Push CHANGELOG and updated files
         if: steps.semrel.outputs.version != ''
         run: |
@@ -35,3 +111,17 @@ jobs:
             git commit -m "chore: update CHANGELOG for ${{ steps.semrel.outputs.version }} [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
           fi
+
+      - name: Download tarball artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-tarball-${{ needs.build-assets.outputs.version }}
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build-assets.outputs.version }}
+          files: googlesql-linux-amd64-${{ needs.build-assets.outputs.version }}.tar.gz
+          fail_on_unmatched: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
