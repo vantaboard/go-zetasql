@@ -819,18 +819,19 @@ func (g *Generator) createBindCCParam(lib *Lib) *BindCCParam {
 }
 
 type BindGoParam struct {
-	Compiler        string
-	DebugMode       bool
-	Pkg             string
-	FQDN            string
-	ImportUnsafePkg bool
-	IncludePaths    []string
-	CXXFlags        []string
-	LDFlags         []string
-	BridgeHeaders   []string
-	ImportGoLibs    []string
-	Funcs           []Func
-	ExportFuncs     []ExportFunc
+	Compiler         string
+	DebugMode        bool
+	Pkg              string
+	FQDN             string
+	ImportUnsafePkg  bool
+	IncludePaths     []string
+	CXXFlags         []string
+	LDFlags          []string
+	BridgeHeaders    []string
+	ImportGoLibs     []string
+	Funcs            []Func
+	ExportFuncs      []ExportFunc
+	IncludeBridgeInc bool // false for root package (no local bridge.inc)
 }
 
 type BridgeExternParam struct {
@@ -946,7 +947,7 @@ func (g *Generator) createRootBindGoParamDarwin() *BindGoParam {
 }
 
 func (g *Generator) createRootBindGoParam(cxxflags, ldflags []string) *BindGoParam {
-	param := &BindGoParam{DebugMode: false}
+	param := &BindGoParam{DebugMode: false, IncludeBridgeInc: false}
 	param.Pkg = "zetasql"
 	param.FQDN = "zetasql"
 	param.Compiler = "c++1z"
@@ -1016,7 +1017,7 @@ func (g *Generator) createRootBindGoParam(cxxflags, ldflags []string) *BindGoPar
 }
 
 func (g *Generator) createBindGoParam(lib *Lib, cxxflags, ldflags []string) *BindGoParam {
-	param := &BindGoParam{DebugMode: false}
+	param := &BindGoParam{DebugMode: false, IncludeBridgeInc: true}
 	param.Pkg = g.goPkgName(lib)
 	param.Compiler = g.cgoCompiler(lib)
 	param.CXXFlags = cxxflags

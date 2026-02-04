@@ -26,6 +26,7 @@ package {{ .Pkg }}
 #cgo CXXFLAGS: -Wno-return-type
 #cgo CXXFLAGS: -Wno-subobject-linkage
 #cgo CXXFLAGS: -Wno-unknown-warning-option
+#cgo CXXFLAGS: -Wno-deprecated-builtins
 #cgo CXXFLAGS: -DHAVE_PTHREAD
 #cgo CXXFLAGS: -DU_COMMON_IMPLEMENTATION
 {{- range .LDFlags }}
@@ -37,7 +38,9 @@ package {{ .Pkg }}
 {{- range .BridgeHeaders }}
 #include "{{ . }}"
 {{- end }}
+{{- if .IncludeBridgeInc }}
 #include "bridge.inc"
+{{- end }}
 */
 import "C"
 import (
