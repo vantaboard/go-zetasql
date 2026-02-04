@@ -10,7 +10,7 @@ isProject: false
 ## Current state
 
 - **Build flow**: [internal/cmd/updater](internal/cmd/updater) builds GoogleSQL via Docker + Bazel, then `go run main.go` (updater) copies from `cache/` (external deps + Bazel output) into [internal/ccall](internal/ccall). That tree is committed by the [update-upstream](.github/workflows/update-upstream.yml) workflow.
-- **Consumption**: All CGo packages under [internal/ccall/go-zetasql](internal/ccall/go-zetasql) use `#cgo` directives with **relative paths** (e.g. `-I../../..`, `-I../../../protobuf`). The compiler therefore expects the full `internal/ccall` tree (absl, icu, protobuf, re2, zetasql, etc.) to exist at that path relative to the package.
+- **Consumption**: All CGo packages under [internal/ccall/go-googlesql](internal/ccall/go-googlesql) use `#cgo` directives with **relative paths** (e.g. `-I../../..`, `-I../../../protobuf`). The compiler therefore expects the full `internal/ccall` tree (absl, icu, protobuf, re2, zetasql, etc.) to exist at that path relative to the package.
 - **playwright-go pattern** ([run.go](https://github.com/playwright-community/playwright-go/blob/main/run.go)): Versioned driver; `DownloadDriver()` fetches a zip from CDN for `GOOS/GOARCH`, extracts to a cache dir (e.g. `~/.cache/ms-playwright-go/<version>`); `Command()` runs the driver from that cache. No modification of the module on disk.
 
 ## Repo layout change (no backward compatibility)
@@ -25,14 +25,14 @@ isProject: false
 ## Design choices
 
 1. **Artifact format**: Pre-built artifact = tarball of the **entire** `internal/ccall` tree for one platform. Same layout as today so existing `#cgo` paths keep working with no changes to hundreds of bind files.
-2. **Where the artifact lives at build time**: CGo resolves paths at compile time relative to the package. So `internal/ccall` must exist **inside the module directory** (e.g. under `GOMODCACHE/.../go-zetasql@vx.y.z/`). The installer will either:
+2. **Where the artifact lives at build time**: CGo resolves paths at compile time relative to the package. So `internal/ccall` must exist **inside the module directory** (e.g. under `GOMODCACHE/.../go-googlesql@vx.y.z/`). The installer will either:
 
-   - **Symlink**: Extract to `~/.cache/go-zetasql/<version>/<goos>-<goarch>/ccall`, then create `internal/ccall` in the module dir as a symlink to that cache dir, or
+   - **Symlink**: Extract to `~/.cache/go-googlesql/<version>/<goos>-<goarch>/ccall`, then create `internal/ccall` in the module dir as a symlink to that cache dir, or
    - **Copy**: Extract into the module’s `internal/ccall` (simpler, but duplicates data and writes into GOMODCACHE).
 
 Symlink is preferable (single copy, smaller disk use); document that GOMODCACHE must support symlinks (default does).
 
-3. **Versioning**: Tie artifacts to the **go-zetasql module version** (e.g. `v0.1.0`). Optionally encode upstream GoogleSQL tag in the tarball name or a manifest for debugging. Download URL pattern: e.g. GitHub release asset `zetasql-<goos>-<goarch>-v<version>.tar.gz`.
+3. **Versioning**: Tie artifacts to the **go-googlesql module version** (e.g. `v0.1.0`). Optionally encode upstream GoogleSQL tag in the tarball name or a manifest for debugging. Download URL pattern: e.g. GitHub release asset `zetasql-<goos>-<goarch>-v<version>.tar.gz`.
 4. **Fallback**: Keep the existing “build from submodule” path (Docker + updater) for contributors or when a pre-built artifact is unavailable (e.g. new platform or custom build).
 
 ## Implementation plan
@@ -45,14 +45,14 @@ Symlink is preferable (single copy, smaller disk use); document that GOMODCACHE 
   - `Installer` (or `Driver`-style name): holds options and version.
   - `Install() error`: resolve cache dir; if SkipIfPresent and cache dir has correct version, return nil; else get download URL for `runtime.GOOS`/`runtime.GOARCH`, download tarball, verify (checksum optional), extract to cache.
   - `InstallToModule(modDir string) error`: after `Install()`, ensure `modDir/internal/ccall` exists: remove existing `internal/ccall` if present, then create symlink from `modDir/internal/ccall` to `<cache>/ccall` (or copy if symlink fails / not supported).
-  - Helper to **resolve module dir** for `github.com/vantaboard/go-googlesql`: run `go list -m -f '{{.Dir}}' github.com/vantaboard/go-googlesql` (or use `GOMODCACHE` + module path + version from `go list -m`). Handle the case where the current module is go-zetasql (e.g. development) vs. a consumer.
+  - Helper to **resolve module dir** for `github.com/vantaboard/go-googlesql`: run `go list -m -f '{{.Dir}}' github.com/vantaboard/go-googlesql` (or use `GOMODCACHE` + module path + version from `go list -m`). Handle the case where the current module is go-googlesql (e.g. development) vs. a consumer.
 - **Download logic**: Mirror playwright’s `downloadDriver`: try URLs in order (e.g. base URL + `zetasql-<platform>-v<version>.tar.gz`), `http.Get`, validate status 200, read body, extract (e.g. `archive/tar` or `compress/gzip`). Optional: SHA256 checksum file per artifact and verify after download.
-- **Cache layout**: e.g. `CacheDir/<version>/<goos>-<goarch>/ccall/` (absl, icu, go-zetasql, protobuf, …). Version can come from a constant in this package, or from `go list -m -f '{{.Version}}' github.com/vantaboard/go-googlesql` when running from a module context.
+- **Cache layout**: e.g. `CacheDir/<version>/<goos>-<goarch>/ccall/` (absl, icu, go-googlesql, protobuf, …). Version can come from a constant in this package, or from `go list -m -f '{{.Version}}' github.com/vantaboard/go-googlesql` when running from a module context.
 - **Platform matrix**: Same as playwright-style: `linux`, `linux-arm64`, `darwin`/`mac`, `mac-arm64`, `windows` (if you add Windows support later). Map `runtime.GOOS`/`runtime.GOARCH` to artifact name.
 
 ### 2. CLI: `cmd/install` (or `cmd/zetasql-install`)
 
-- **Behavior**: Similar to [cmd/playwright/main.go](https://github.com/playwright-community/playwright-go/blob/main/cmd/playwright/main.go): parse flags (optional: `-version`, `-cache-dir`, `-skip-if-present`), create installer with options, call `Install()` then `InstallToModule(modDir)` where `modDir` is the resolved go-zetasql module directory.
+- **Behavior**: Similar to [cmd/playwright/main.go](https://github.com/playwright-community/playwright-go/blob/main/cmd/playwright/main.go): parse flags (optional: `-version`, `-cache-dir`, `-skip-if-present`), create installer with options, call `Install()` then `InstallToModule(modDir)` where `modDir` is the resolved go-googlesql module directory.
 - **Usage**: `go run github.com/vantaboard/go-googlesql/cmd/install@v0.1.0` (or `go install` then `zetasql-install`). Document that this prepares the module for building (creates/symlinks `internal/ccall`).
 
 ### 3. GitHub CI/CD: build and publish pre-built artifacts
@@ -66,12 +66,12 @@ Symlink is preferable (single copy, smaller disk use); document that GOMODCACHE 
 
 ### 4. Repo policy for `internal/ccall` (install-only, no backward compatibility)
 
-- Stop committing `internal/ccall`. Add `internal/ccall` to `.gitignore`. Every build (CI for go-zetasql itself, or consumers) runs the installer first (or uses a pre-run that populates `internal/ccall` from cache or from the release tarball).
+- Stop committing `internal/ccall`. Add `internal/ccall` to `.gitignore`. Every build (CI for go-googlesql itself, or consumers) runs the installer first (or uses a pre-run that populates `internal/ccall` from cache or from the release tarball).
 - Update [update-upstream](.github/workflows/update-upstream.yml) to use [cmd/updater](cmd/updater) and so it no longer commits `internal/ccall`; instead it can build and upload a candidate artifact or open a PR that triggers the artifact build.
 
 ### 5. Documentation and UX
 
-- **README**: Add an “Installation” section: to build go-zetasql (or a project that depends on it), run once: `go run github.com/vantaboard/go-googlesql/cmd/install@latest` (or the version you use). Optionally set `ZETASQL_CACHE_DIR` or `ZETASQL_DOWNLOAD_BASE_URL`. If no pre-built artifact exists for your platform, document the “build from source” path (submodule + Docker + updater).
+- **README**: Add an “Installation” section: to build go-googlesql (or a project that depends on it), run once: `go run github.com/vantaboard/go-googlesql/cmd/install@latest` (or the version you use). Optionally set `ZETASQL_CACHE_DIR` or `ZETASQL_DOWNLOAD_BASE_URL`. If no pre-built artifact exists for your platform, document the “build from source” path (submodule + Docker + updater).
 - **CI for consumers**: In [go.yml](.github/workflows/go.yml) (or a separate “test with installer” job), before `go test`: run the install command so the module has `internal/ccall` from the cached artifact when testing. Document that building from source uses [cmd/updater](cmd/updater) (Docker + Bazel + updater).
 
 ### 6. Version constant and optional checksum
@@ -94,7 +94,7 @@ sequenceDiagram
   Installer->>Installer: Install() -> download + extract to cache
   Installer->>GitHubReleases: GET zetasql-linux-amd64-v0.1.0.tar.gz
   GitHubReleases-->>Installer: tarball
-  Installer->>Installer: extract to ~/.cache/go-zetasql/v0.1.0/linux-amd64/ccall
+  Installer->>Installer: extract to ~/.cache/go-googlesql/v0.1.0/linux-amd64/ccall
   Installer->>GOMODCACHE: symlink modDir/internal/ccall -> cache/ccall
   InstallCLI-->>User: success
   User->>GOMODCACHE: go build (CGo uses internal/ccall via symlink)
