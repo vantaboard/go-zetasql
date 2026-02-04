@@ -13,9 +13,11 @@ ENV PATH="/usr/local/go/bin:${PATH}"
 RUN curl -fsSL https://bazel.build/bazel-release.pub.gpg | gpg --dearmor -o /usr/share/keyrings/bazel-archive-keyring.gpg \
     && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/bazel-archive-keyring.gpg] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list
 
-# Install Bazel version required by googlesql (from .bazelversion). Must copy before apt-get install.
+# Install Bazel version required by googlesql (from .bazelversion). Versioned package installs /usr/bin/bazel-<ver>; symlink to bazel.
 COPY googlesql/.bazelversion /tmp/googlesql-bazelversion
-RUN apt-get update && apt-get install --no-install-recommends -y "bazel-$(cat /tmp/googlesql-bazelversion)" \
+RUN BAZEL_VER="$(cat /tmp/googlesql-bazelversion)" \
+    && apt-get update && apt-get install --no-install-recommends -y "bazel-${BAZEL_VER}" \
+    && ln -sf "/usr/bin/bazel-${BAZEL_VER}" /usr/bin/bazel \
     && rm -rf /var/lib/apt/lists/* \
     && rm /tmp/googlesql-bazelversion
 
@@ -25,6 +27,7 @@ COPY googlesql /googlesql
 
 WORKDIR /googlesql
 
-RUN bazel build '//zetasql/public:sql_formatter'
+# Build targets that produce all generated headers (e.g. resolved_ast.h) required by the CGo build.
+RUN bazel build '//zetasql/public:sql_formatter' '//zetasql/resolved_ast:resolved_ast'
 
 COPY export.sh .

@@ -17,7 +17,7 @@ import (
 
 var (
 	bazelSupportedLibs = []string{"zetasql", "absl"}
-	includeDirs        = []string{"protobuf", "gtest", "icu", "re2", "json", "googleapis", "flex/src"}
+	includeDirs        = []string{"protobuf", "gtest", "icu", "re2", "json", "googleapis", "flex/src", "go-googlesql"}
 )
 
 type Generator struct {
@@ -86,6 +86,9 @@ func (g *Generator) Generate() error {
 		return err
 	}
 	g.internalExportNames = internalExportNames
+	if err := g.ensureExportIncForExternalDeps(parsedFiles); err != nil {
+		return err
+	}
 	for _, parsedFile := range parsedFiles {
 		if err := g.generate(parsedFile); err != nil {
 			return err
@@ -95,8 +98,12 @@ func (g *Generator) Generate() error {
 	if err != nil {
 		return err
 	}
-	for _, dir := range append(includeDirs, "zetasql", "absl") {
-		if err := filepath.Walk(filepath.Join(ccallDir(), dir), func(path string, info fs.FileInfo, err error) error {
+	for _, dir := range append(includeDirs, "go-googlesql", "absl") {
+		dirPath := filepath.Join(ccallDir(), dir)
+		if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+			continue
+		}
+		if err := filepath.Walk(dirPath, func(path string, info fs.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
@@ -108,6 +115,13 @@ func (g *Generator) Generate() error {
 			return nil
 		}); err != nil {
 			return err
+		}
+	}
+	// Headers use #include "zetasql/base/..."; create go-googlesql/zetasql -> . so that -I go-googlesql finds them.
+	zetasqlLink := filepath.Join(ccallDir(), "go-googlesql", "zetasql")
+	if _, err := os.Stat(filepath.Join(ccallDir(), "go-googlesql")); err == nil {
+		if _, err := os.Lstat(zetasqlLink); err != nil && os.IsNotExist(err) {
+			_ = os.Symlink(".", zetasqlLink)
 		}
 	}
 	return nil
@@ -209,7 +223,11 @@ func (g *Generator) protobufInternalExportNames(parsedFiles []*ParsedFile) ([]st
 	for _, path := range g.cfg.ProtobufInternalExportNameFiles {
 		internalExportName, err := g.headerPathToInternalExportName(filepath.Join(ccallDir(), path))
 		if err != nil {
-			return nil, err
+			if os.IsNotExist(err) {
+				internalExportName = "GOOGLE_PROTOBUF"
+			} else {
+				return nil, err
+			}
 		}
 		internalExportNames = append(internalExportNames, internalExportName)
 	}
@@ -219,7 +237,11 @@ func (g *Generator) protobufInternalExportNames(parsedFiles []*ParsedFile) ([]st
 				headerPath := filepath.Join(ccallDir(), ccproto.BasePkg, header)
 				internalExportName, err := g.headerPathToInternalExportName(headerPath)
 				if err != nil {
-					return nil, err
+					if os.IsNotExist(err) {
+						internalExportName = "GOOGLE_PROTOBUF"
+					} else {
+						return nil, err
+					}
 				}
 				internalExportNames = append(internalExportNames, internalExportName)
 			}
@@ -251,6 +273,9 @@ func (g *Generator) headerPathToInternalExportName(path string) (string, error) 
 func (g *Generator) generate(f *ParsedFile) error {
 	for _, lib := range f.cclibs {
 		outputDir := filepath.Join(ccallDir(), goPkgPath(lib.BasePkg, lib.Name))
+		if err := g.generateExportInc(lib); err != nil {
+			return err
+		}
 		if err := g.generateBindCC(outputDir, lib); err != nil {
 			return err
 		}
@@ -272,6 +297,9 @@ func (g *Generator) generate(f *ParsedFile) error {
 	}
 	for _, lib := range f.ccprotos {
 		outputDir := filepath.Join(ccallDir(), goPkgPath(lib.BasePkg, lib.Name))
+		if err := g.generateExportInc(lib); err != nil {
+			return err
+		}
 		if err := g.generateBindCC(outputDir, lib); err != nil {
 			return err
 		}
@@ -288,13 +316,13 @@ func (g *Generator) generate(f *ParsedFile) error {
 			return err
 		}
 	}
-	if err := g.generateRootBindCC(filepath.Join(ccallDir(), "go-zetasql")); err != nil {
+	if err := g.generateRootBindCC(filepath.Join(ccallDir(), "go-googlesql")); err != nil {
 		return err
 	}
-	if err := g.generateRootBridgeH(filepath.Join(ccallDir(), "go-zetasql")); err != nil {
+	if err := g.generateRootBridgeH(filepath.Join(ccallDir(), "go-googlesql")); err != nil {
 		return err
 	}
-	if err := g.generateRootBindGO(filepath.Join(ccallDir(), "go-zetasql")); err != nil {
+	if err := g.generateRootBindGO(filepath.Join(ccallDir(), "go-googlesql")); err != nil {
 		return err
 	}
 	return nil
@@ -322,7 +350,53 @@ func (g *Generator) generateRootBindCC(outputDir string) error {
 	return nil
 }
 
+func (g *Generator) generateExportInc(lib *Lib) error {
+	includePath := ccallIncludePath(lib.BasePkg, lib.Name)
+	dir := filepath.Join(ccallDir(), includePath)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	// Empty export.inc satisfies #include; headers may define visibility macros elsewhere.
+	return os.WriteFile(filepath.Join(dir, "export.inc"), []byte{}, 0o600)
+}
+
+// ensureExportIncForExternalDeps creates export.inc for every external dep (absl, protobuf, etc.)
+// that is referenced from cclibs/ccprotos but does not have its own Lib in the parsed BUILD files.
+func (g *Generator) ensureExportIncForExternalDeps(parsedFiles []*ParsedFile) error {
+	seen := map[string]struct{}{}
+	externalPrefixes := []string{"absl", "protobuf", "re2", "icu", "json", "googleapis", "flex"}
+	isExternal := func(basePkg string) bool {
+		for _, p := range externalPrefixes {
+			if strings.HasPrefix(basePkg, p) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, f := range parsedFiles {
+		for _, lib := range append(f.cclibs, f.ccprotos...) {
+			for _, dep := range lib.Deps {
+				if !isExternal(dep.BasePkg) {
+					continue
+				}
+				key := dep.BasePkg + "/" + dep.Pkg
+				if _, ok := seen[key]; ok {
+					continue
+				}
+				seen[key] = struct{}{}
+				if err := g.generateExportInc(&Lib{BasePkg: dep.BasePkg, Name: dep.Pkg}); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (g *Generator) generateBindCC(outputDir string, lib *Lib) error {
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return err
+	}
 	output, err := g.generateCCSourceByTemplate(
 		"templates/bind.cc.tmpl",
 		g.createBindCCParam(lib),
@@ -532,11 +606,18 @@ type SourceParam struct {
 	AfterIncludeHook  string
 }
 
+// fqdnForExport returns an FQDN safe for C/Go export symbols (no hyphens; hyphens invalid in identifiers).
+func fqdnForExport(basePkg, name string) string {
+	prefix := strings.ReplaceAll(basePkg, "/", "_")
+	fqdn := fmt.Sprintf("%s_%s", prefix, name)
+	return strings.ReplaceAll(fqdn, "-", "_")
+}
+
 func (g *Generator) createBindCCParam(lib *Lib) *BindCCParam {
 	param := &BindCCParam{}
 
 	prefix := strings.ReplaceAll(lib.BasePkg, "/", "_")
-	param.FQDN = fmt.Sprintf("%s_%s", prefix, lib.Name)
+	param.FQDN = fqdnForExport(lib.BasePkg, lib.Name)
 	param.PkgPath = lib.BasePkg
 	param.ReplaceNames = append(
 		append(
@@ -547,10 +628,11 @@ func (g *Generator) createBindCCParam(lib *Lib) *BindCCParam {
 	)
 	param.Headers = lib.HeaderPaths()
 	sources := make([]SourceParam, 0, len(lib.Sources))
+	prefixExport := strings.ReplaceAll(prefix, "-", "_")
 	for _, src := range lib.SourcePaths() {
 		sourceParam := SourceParam{Value: src}
 		if sym, exists := g.containsConflictSymbolFileMap[src]; exists {
-			sourceParam.BeforeIncludeHook = fmt.Sprintf("\n\n#define %s %s%s", sym.Symbol, prefix, sym.Symbol)
+			sourceParam.BeforeIncludeHook = fmt.Sprintf("\n\n#define %s %s%s", sym.Symbol, prefixExport, sym.Symbol)
 			sourceParam.AfterIncludeHook = fmt.Sprintf("\n#undef %s\n", sym.Symbol)
 		}
 		if addSource, exists := g.containsAddSourceFileMap[src]; exists {
@@ -561,7 +643,7 @@ func (g *Generator) createBindCCParam(lib *Lib) *BindCCParam {
 	param.Sources = sources
 	deps := make([]string, 0, len(lib.Deps))
 	for _, dep := range lib.Deps {
-		deps = append(deps, goPkgPath(dep.BasePkg, dep.Pkg))
+		deps = append(deps, ccallIncludePath(dep.BasePkg, dep.Pkg))
 	}
 	param.Deps = deps
 	return param
@@ -750,8 +832,7 @@ func (g *Generator) createBindGoParam(lib *Lib, cxxflags, ldflags []string) *Bin
 	param.Compiler = g.cgoCompiler(lib)
 	param.CXXFlags = cxxflags
 	param.LDFlags = ldflags
-	prefix := strings.ReplaceAll(lib.BasePkg, "/", "_")
-	param.FQDN = fmt.Sprintf("%s_%s", prefix, lib.Name)
+	param.FQDN = fqdnForExport(lib.BasePkg, lib.Name)
 	ccallDir := strings.Repeat("../", len(strings.Split(lib.BasePkg, "/"))+1)
 	includePaths := []string{ccallDir}
 	for _, includeDir := range includeDirs {
