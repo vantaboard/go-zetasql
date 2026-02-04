@@ -87,3 +87,12 @@ func ccallIncludePath(basePkg, pkg string) string {
 	}
 	return goPkgPath(basePkg, pkg)
 }
+
+// pkgNameToCCallIncludePath returns the path under ccall/ for root_bind.cc #include.
+// Uses actual ccall layout (absl/..., go-googlesql/...) so export.inc and bridge files are found.
+func pkgNameToCCallIncludePath(pkgName string) string {
+	splitted := strings.Split(pkgName, "/")
+	base := filepath.Join(splitted[:len(splitted)-1]...)
+	pkg := splitted[len(splitted)-1]
+	return ccallIncludePath(base, pkg)
+}

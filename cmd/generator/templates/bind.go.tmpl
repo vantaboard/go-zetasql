@@ -38,12 +38,18 @@ package {{ .Pkg }}
 {{- range .BridgeHeaders }}
 #include "{{ . }}"
 {{- end }}
+{{- range .BridgeIncPaths }}
+#include "{{ . }}"
+{{- end }}
 {{- if .IncludeBridgeInc }}
 #include "bridge.inc"
 {{- end }}
 */
 import "C"
 import (
+	{{- range .NamedImportGoLibs }}
+	{{ .Name }} "{{ .Path }}"
+	{{- end }}
 	{{- range .ImportGoLibs }}
 	_ "{{ . }}"
 	{{- end }}
@@ -69,7 +75,11 @@ func {{ .Name }}({{- range $index, $value := .Args }}arg{{ $index }} {{ $value.G
 }
 
 func {{ .BasePkg }}_{{ .Name }}({{- range $index, $value := .Args }}arg{{ $index }} {{ $value.CGO }},{{- end }}) {
+	{{- if .CallPkg }}
+	{{ .CallPkg }}.{{ .Name }}({{- range $index, $value := .Args }}{{ if $value.NeedsCast }}{{ $value.CToGo $index }},{{ else }}arg{{ $index }},{{ end }}{{- end }})
+	{{- else }}
 	C.export_{{ $fqdn }}_{{ .Name }}({{- range $index, $value := .Args }}arg{{ $index }},{{- end }})
+	{{- end }}
 }
 {{- end }}
 

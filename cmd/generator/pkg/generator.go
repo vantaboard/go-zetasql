@@ -157,6 +157,8 @@ inline uint64_t Fingerprint64(const char* s, size_t len) { (void)s; return stati
 			body: `// Stub for differential-privacy partition-selection when not copying external.
 #ifndef ALGORITHMS_PARTITION_SELECTION_STUB_H_
 #define ALGORITHMS_PARTITION_SELECTION_STUB_H_
+#include <cstdint>
+#include "absl/status/statusor.h"
 namespace differential_privacy {
 template <typename T>
 class PartitionSelection { public: bool ShouldKeep(double) const { return true; } };
@@ -164,6 +166,12 @@ template <typename T>
 class LaplacePartitionSelection : public PartitionSelection<T> {
  public:
   bool ShouldKeep(double epsilon) const { (void)epsilon; return true; }
+  static absl::StatusOr<double> CalculateThreshold(double epsilon, double delta, int64_t kappa) {
+    (void)epsilon; (void)delta; (void)kappa; return 0.0;
+  }
+  static absl::StatusOr<double> CalculateDelta(double epsilon, int64_t k_threshold, int64_t kappa) {
+    (void)epsilon; (void)k_threshold; (void)kappa; return 0.0;
+  }
 };
 }
 #endif
@@ -458,6 +466,7 @@ func (g *Generator) generateRootBindCC(outputDir string) error {
 		if len(pkg.Methods) == 0 {
 			continue
 		}
+		// Use Go package path (go-absl/..., go-googlesql/...); export.inc is written there too for absl deps.
 		libs = append(libs, normalizeGoPkgPath(pkg.Name))
 	}
 	output, err := g.generateCCSourceByTemplate(
@@ -479,8 +488,23 @@ func (g *Generator) generateExportInc(lib *Lib) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	// Empty export.inc satisfies #include; headers may define visibility macros elsewhere.
-	return os.WriteFile(filepath.Join(dir, "export.inc"), []byte{}, 0o600)
+	emptyExport := []byte{}
+	if err := os.WriteFile(filepath.Join(dir, "export.inc"), emptyExport, 0o600); err != nil {
+		return err
+	}
+	// For absl/etc, bind output lives under go-absl/...; root_bind.cc includes from that path,
+	// so ensure export.inc exists there too.
+	goPath := goPkgPath(lib.BasePkg, lib.Name)
+	if goPath != includePath {
+		goDir := filepath.Join(ccallDir(), goPath)
+		if err := os.MkdirAll(goDir, 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(goDir, "export.inc"), emptyExport, 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ensureExportIncForAllDeps creates export.inc for every dep referenced from cclibs/ccprotos
@@ -927,6 +951,15 @@ func (t *Type) GoToC(index int) string {
 	return fmt.Sprintf("%s(%s)", t.CGO, argName)
 }
 
+// CToGo returns an expression converting CGO arg to GO type (for root calling dep packages).
+func (t *Type) CToGo(index int) string {
+	argName := fmt.Sprintf("arg%d", index)
+	if strings.HasPrefix(t.GO, "*") {
+		return fmt.Sprintf("(%s)(unsafe.Pointer(%s))", t.GO, argName)
+	}
+	return fmt.Sprintf("(%s)(%s)", t.GO, argName)
+}
+
 var reservedKeywords = []string{
 	"case", "type",
 }
@@ -948,10 +981,15 @@ func (g *Generator) cgoCompiler(lib *Lib) string {
 }
 
 func (g *Generator) goPkgName(lib *Lib) string {
-	if g.goReservedKeyword(lib.Name) {
-		return "go_" + lib.Name
+	return g.safeImportName(lib.Name)
+}
+
+// safeImportName returns a Go-safe name for an import (e.g. "type" -> "go_type").
+func (g *Generator) safeImportName(name string) string {
+	if g.goReservedKeyword(name) {
+		return "go_" + name
 	}
-	return lib.Name
+	return name
 }
 
 func (g *Generator) extendLibs(lib *Lib) []string {
@@ -1017,54 +1055,40 @@ func (g *Generator) createRootBindGoParam(cxxflags, ldflags []string) *BindGoPar
 	param.IncludePaths = includePaths
 	bridgeHeaderMap := map[string]struct{}{}
 	importGoLibsSet := map[string]struct{}{}
+	// Root re-exports every go-googlesql package that has methods (catalog, simple_catalog, parser, etc.).
 	for _, pkg := range g.pkgs() {
-		pkgName := pkg.Name
-		// pkgToAllDeps is keyed by libMap (go-googlesql/...); bridge uses zetasql/... so normalize.
-		libKey := normalizeGoPkgPath(pkgName)
-		for _, dep := range g.pkgToAllDeps[libKey] {
-			if dep == libKey {
-				continue
+		if len(pkg.Methods) == 0 {
+			continue
+		}
+		dep := normalizeGoPkgPath(pkg.Name)
+		if !strings.HasPrefix(dep, "go-googlesql") {
+			continue
+		}
+		libName := fmt.Sprintf("github.com/vantaboard/go-googlesql/internal/ccall/%s", dep)
+		callPkg := g.safeImportName(filepath.Base(dep))
+		basePkg := filepath.Base(dep)
+		bridgeHeader := filepath.Join(ccallDir, dep, "bridge.h")
+		if _, exists := bridgeHeaderMap[bridgeHeader]; exists {
+			continue
+		}
+		param.BridgeHeaders = append(param.BridgeHeaders, bridgeHeader)
+		bridgeHeaderMap[bridgeHeader] = struct{}{}
+		if _, ok := importGoLibsSet[libName]; !ok {
+			importGoLibsSet[libName] = struct{}{}
+			param.NamedImportGoLibs = append(param.NamedImportGoLibs, NamedImport{Name: callPkg, Path: libName})
+		}
+		for _, method := range pkg.Methods {
+			method := method
+			fn, needsImportUnsagePkg := g.pkgMethodToFunc(basePkg, &method)
+			if needsImportUnsagePkg {
+				param.ImportUnsafePkg = true
 			}
-			// Only import go-googlesql subpackages; they have bind_linux.go. External deps (absl, etc.)
-			// often only have dummy.go with build tag "required" and would fail to build.
-			if !strings.HasPrefix(dep, "go-googlesql") {
-				continue
-			}
-			libName := fmt.Sprintf("github.com/vantaboard/go-googlesql/internal/ccall/%s", dep)
-			callPkg := filepath.Base(dep)
-			if _, ok := importGoLibsSet[libName]; !ok {
-				importGoLibsSet[libName] = struct{}{}
-				param.ImportGoLibs = append(param.ImportGoLibs, libName)
-				param.NamedImportGoLibs = append(param.NamedImportGoLibs, NamedImport{Name: callPkg, Path: libName})
-			}
-			// Bridge headers and export funcs only for packages that have bridge definitions.
-			depPkg, exists := g.importSymbolPackageMap[dep]
-			if !exists {
-				depPkg, exists = g.pkgMap[strings.Replace(dep, "go-googlesql", "zetasql", 1)]
-			}
-			if !exists {
-				continue
-			}
-			basePkg := filepath.Base(dep)
-			bridgeHeader := filepath.Join(ccallDir, dep, "bridge.h")
-			if _, exists := bridgeHeaderMap[bridgeHeader]; exists {
-				continue
-			}
-			param.BridgeHeaders = append(param.BridgeHeaders, bridgeHeader)
-			bridgeHeaderMap[bridgeHeader] = struct{}{}
-			for _, method := range depPkg.Methods {
-				method := method
-				fn, needsImportUnsagePkg := g.pkgMethodToFunc(basePkg, &method)
-				if needsImportUnsagePkg {
-					param.ImportUnsafePkg = true
-				}
-				fn.CallPkg = callPkg
-				param.ExportFuncs = append(param.ExportFuncs, ExportFunc{
-					Func:    fn,
-					LibName: libName,
-				})
-				param.Funcs = append(param.Funcs, fn)
-			}
+			fn.CallPkg = callPkg
+			param.ExportFuncs = append(param.ExportFuncs, ExportFunc{
+				Func:    fn,
+				LibName: libName,
+			})
+			param.Funcs = append(param.Funcs, fn)
 		}
 	}
 	return param
