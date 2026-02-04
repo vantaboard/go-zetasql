@@ -1,10 +1,12 @@
 # Builds pre-built GoogleSQL artifacts (internal/ccall tree) per platform and uploads them as release assets.
-# Runs when a release is created (tag v*). Consumers use the installer to download these artifacts.
+# Runs when a release is published or when a version tag (v*) is pushed. Consumers use the installer to download these artifacts.
 name: Build release assets
 
 on:
   release:
     types: [published]
+  push:
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       version:

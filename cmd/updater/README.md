@@ -8,12 +8,12 @@ GoogleSQL is **not** a submodule. It is cloned at build time into `./googlesql` 
 
 ## Build (local or CI)
 
-1. **Clone googlesql** at the pinned commit (default: `3465a9281a7b258711782af5ae5e7c75f0e24358`, or set `UPSTREAM_COMMIT` or `GOOGLESQL_COMMIT`):
+1. **Clone googlesql** at the pinned ref in `UPSTREAM_COMMIT` (e.g. `2022.02.01`), or override with `GOOGLESQL_COMMIT`:
 
    ```bash
    make clone-googlesql
-   # Or at a specific commit:
-   make clone-googlesql GOOGLESQL_COMMIT=3465a9281a7b258711782af5ae5e7c75f0e24358
+   # Or at a specific tag or commit:
+   make clone-googlesql GOOGLESQL_COMMIT=2022.02.01
    ```
 
 2. **Build and export** (Docker + Bazel):
