@@ -41,12 +41,12 @@ func main() {
 
 	modDir, err := install.ResolveModuleDir()
 	if err != nil {
-		log.Fatalf("could not resolve go-zetasql module dir: %v", err)
+		log.Fatalf("could not resolve go-googlesql module dir: %v", err)
 	}
 	if err := inst.InstallToModule(modDir); err != nil {
 		log.Fatalf("could not install GoogleSQL artifact: %v", err)
 	}
 	if *verbose {
-		fmt.Fprintln(os.Stderr, "[go-zetasql install] Done. internal/ccall is linked to cache.")
+		fmt.Fprintln(os.Stderr, "[go-googlesql install] Done. internal/ccall is linked to cache.")
 	}
 }

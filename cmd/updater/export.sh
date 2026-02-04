@@ -15,8 +15,17 @@ if [ -e /googlesql/bazel-out ]; then
   done
 fi
 if [ -z "$OUTPUT_BASE" ]; then
-  # Build targets that produce all generated headers (e.g. resolved_ast.h) required by the CGo build.
-  bazel build '//zetasql/public:sql_formatter' '//zetasql/resolved_ast:resolved_ast'
+  # Build targets that produce all generated headers and protos required by the CGo build.
+  bazel build \
+    '//zetasql/public:sql_formatter' \
+    '//zetasql/resolved_ast:resolved_ast' \
+    '//zetasql/resolved_ast:comparator' \
+    '//zetasql/base/net:public_suffix_oss' \
+    '//zetasql/parser:parse_tree_serializer' \
+    '//zetasql/scripting:script_exception_cc_proto' \
+    '//zetasql/scripting:script_executor_state_cc_proto' \
+    '//zetasql/public/functions:common_proto' \
+    '//zetasql/reference_impl:evaluator_table_iterator_cc_proto'
   OUTPUT_BASE=$(bazel info output_base)
 fi
 

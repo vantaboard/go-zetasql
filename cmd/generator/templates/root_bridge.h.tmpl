@@ -8,7 +8,7 @@ extern "C" {
 #include <stdint.h>
 
 {{- range . }}
-#include "../go-{{ . }}/bridge_extern.h"
+#include "../{{ . }}/bridge_extern.h"
 {{- end }}
 
 #ifdef __cplusplus

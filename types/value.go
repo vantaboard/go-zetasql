@@ -4,7 +4,7 @@ import (
 	"time"
 	"unsafe"
 
-	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-googlesql"
 	"github.com/vantaboard/go-googlesql/internal/helper"
 )
 
@@ -205,7 +205,7 @@ type Value interface {
 	// be "(1, 'a')".  If we're only interested in the value itself and not the
 	// original type (with named fields) then maybe that's ok.  Note that
 	// GetSQLLiteral() is used in GoogleSQL's FORMAT() function implementation
-	// (Format() in zetasql/public_functions/format.cc) so we cannot change
+	// (Format() in googlesql/public_functions/format.cc) so we cannot change
 	// the output without breaking existing GoogleSQL function semantics.
 	SQL(mode ProductMode) string
 

@@ -1,10 +1,10 @@
-package zetasql
+package googlesql
 
 import "C"
 import (
 	"unsafe"
 
-	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-googlesql"
 )
 
 // ParseResumeLocation stores the parser input and a location, and is used as a restart token

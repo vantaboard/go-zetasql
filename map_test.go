@@ -1,4 +1,4 @@
-package zetasql_test
+package googlesql_test
 
 import (
 	"testing"
@@ -18,28 +18,28 @@ func TestNodeMap(t *testing.T) {
 		}),
 	)
 	catalog.AddGoogleSQLBuiltinFunctions(nil)
-	langOpt := zetasql.NewLanguageOptions()
-	langOpt.SetNameResolutionMode(zetasql.NameResolutionDefault)
+	langOpt := googlesql.NewLanguageOptions()
+	langOpt.SetNameResolutionMode(googlesql.NameResolutionDefault)
 	langOpt.SetProductMode(types.ProductExternal)
 	langOpt.SetSupportedStatementKinds([]resolved_ast.Kind{resolved_ast.QueryStmt})
-	opt := zetasql.NewAnalyzerOptions()
+	opt := googlesql.NewAnalyzerOptions()
 	opt.SetAllowUndeclaredParameters(true)
 	opt.SetLanguage(langOpt)
-	opt.SetParseLocationRecordType(zetasql.ParseLocationRecordFullNodeScope)
+	opt.SetParseLocationRecordType(googlesql.ParseLocationRecordFullNodeScope)
 
 	query := `SELECT SUM(col1), col2 FROM z_table GROUP BY col2 HAVING SUM(col1) > 100`
 
-	analyzerOut, err := zetasql.AnalyzeStatement(query, catalog, opt)
+	analyzerOut, err := googlesql.AnalyzeStatement(query, catalog, opt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	node, err := zetasql.ParseStatement(query, nil)
+	node, err := googlesql.ParseStatement(query, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	resolvedNode := analyzerOut.Statement()
-	nodeMap := zetasql.NewNodeMap(resolvedNode, node)
+	nodeMap := googlesql.NewNodeMap(resolvedNode, node)
 
 	_ = resolved_ast.Walk(resolvedNode, func(n resolved_ast.Node) error {
 		found := nodeMap.FindNodeFromResolvedNode(n)

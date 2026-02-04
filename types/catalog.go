@@ -6,7 +6,7 @@ import (
 	"sync"
 	"unsafe"
 
-	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-googlesql"
 	"github.com/vantaboard/go-googlesql/internal/helper"
 )
 

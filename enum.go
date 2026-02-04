@@ -1,4 +1,4 @@
-package zetasql
+package googlesql
 
 // ParameterMode mode describing how parameters are defined and referenced.
 type ParameterMode int
@@ -71,11 +71,11 @@ const (
 // There are three types of LanguageFeatures.
 // * Cross-version - Optional features that can be enabled orthogonally to
 //                   versioning.  Some engines will never implement these
-//                   features, and zetasql code will always support this
+//                   features, and googlesql code will always support this
 //                   switch.
 // * Versioned - Features that describe behavior changes adopted as of some
 //               language version.  Eventually, all engines should support these
-//               features, and switches in the zetasql code (and tests)
+//               features, and switches in the googlesql code (and tests)
 //               should eventually be removed.
 //               All of these, and only these, show up in VERSION_CURRENT.
 // * Experimental - Features not currently part of any language version.

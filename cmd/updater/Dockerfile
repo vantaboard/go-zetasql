@@ -27,7 +27,16 @@ COPY googlesql /googlesql
 
 WORKDIR /googlesql
 
-# Build targets that produce all generated headers (e.g. resolved_ast.h) required by the CGo build.
-RUN bazel build '//zetasql/public:sql_formatter' '//zetasql/resolved_ast:resolved_ast'
+# Build targets that produce all generated headers and protos required by the CGo build.
+RUN bazel build \
+  '//zetasql/public:sql_formatter' \
+  '//zetasql/resolved_ast:resolved_ast' \
+  '//zetasql/resolved_ast:comparator' \
+  '//zetasql/base/net:public_suffix_oss' \
+  '//zetasql/parser:parse_tree_serializer' \
+  '//zetasql/scripting:script_exception_cc_proto' \
+  '//zetasql/scripting:script_executor_state_cc_proto' \
+  '//zetasql/public/functions:common_proto' \
+  '//zetasql/reference_impl:evaluator_table_iterator_cc_proto'
 
 COPY export.sh .

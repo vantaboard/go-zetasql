@@ -3,7 +3,7 @@ package resolved_ast
 import (
 	"unsafe"
 
-	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-googlesql"
 	"github.com/vantaboard/go-googlesql/internal/helper"
 	"github.com/vantaboard/go-googlesql/types"
 )
@@ -829,7 +829,7 @@ func (n *AggregateFunctionCallNode) SetLimit(v ExprNode) {
 // there is no extra information to consider besides the arguments
 // and other fields from BaseFunctionCallNode. However, for
 // example, the TemplateSQLFunction in
-// zetasql/public/templated_sql_function.h defines the
+// googlesql/public/templated_sql_function.h defines the
 // TemplatedSQLFunctionCall subclass which includes the
 // fully-resolved function body in context of the actual concrete
 // types of the arguments provided to the function call.
@@ -1079,7 +1079,7 @@ func (n *MakeProtoNode) AddField(v *MakeProtoFieldNode) {
 }
 
 // MakeProtoFieldNode one field assignment in a MakeProtoNode expression.
-// The type of expr will match with the zetasql type of the proto field.
+// The type of expr will match with the googlesql type of the proto field.
 // The type will be an array if the field is repeated.
 //
 // For NULL values of Expr, the proto field should be cleared.
@@ -1212,7 +1212,7 @@ func (n *GetProtoFieldNode) SetFormat(v FieldFormat) {
 //
 // This can only be set for non-message fields. If the field is a
 // proto2 field, then it must be annotated with
-// zetasql.UseDefaults=true. This cannot be set when HasBit is true or the field is required.
+// googlesql.UseDefaults=true. This cannot be set when HasBit is true or the field is required.
 func (n *GetProtoFieldNode) ReturnDefaultValueWhenUnset() bool {
 	var v bool
 	internal.ResolvedGetProtoField_return_default_value_when_unset(n.raw, &v)

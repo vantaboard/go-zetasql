@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	// DefaultVersion is the default GoogleSQL artifact version (go-zetasql module version).
+	// DefaultVersion is the default GoogleSQL artifact version (go-googlesql module version).
 	// Override with InstallOptions.Version.
 	DefaultVersion = "v0.0.0"
 	modulePath     = "github.com/vantaboard/go-googlesql"
@@ -19,9 +19,9 @@ const (
 
 // InstallOptions configures the installer.
 type InstallOptions struct {
-	// CacheDir is where to download and extract artifacts. Default: platform cache (e.g. ~/.cache/go-zetasql).
+	// CacheDir is where to download and extract artifacts. Default: platform cache (e.g. ~/.cache/go-googlesql).
 	CacheDir string
-	// Version is the go-zetasql version (e.g. v0.1.0). Used for download URL and cache path. Default: DefaultVersion.
+	// Version is the go-googlesql version (e.g. v0.1.0). Used for download URL and cache path. Default: DefaultVersion.
 	Version string
 	// BaseURL is the base URL for downloads (e.g. GitHub releases). Default: empty (use GitHub API).
 	BaseURL string
@@ -69,7 +69,7 @@ func (i *Installer) Install() (string, error) {
 	ccallDir := filepath.Join(extractDir, "ccall")
 
 	if i.opts.SkipIfPresent {
-		if _, err := os.Stat(filepath.Join(ccallDir, "go-zetasql")); err == nil {
+		if _, err := os.Stat(filepath.Join(ccallDir, "go-googlesql")); err == nil {
 			i.log("Using cached artifact", "path", ccallDir)
 			return ccallDir, nil
 		}
@@ -140,13 +140,13 @@ func (i *Installer) cacheDir() (string, error) {
 	}
 	switch runtime.GOOS {
 	case "windows":
-		return filepath.Join(home, "AppData", "Local", "go-zetasql"), nil
+		return filepath.Join(home, "AppData", "Local", "go-googlesql"), nil
 	case "darwin":
-		return filepath.Join(home, "Library", "Caches", "go-zetasql"), nil
+		return filepath.Join(home, "Library", "Caches", "go-googlesql"), nil
 	case "linux":
-		return filepath.Join(home, ".cache", "go-zetasql"), nil
+		return filepath.Join(home, ".cache", "go-googlesql"), nil
 	default:
-		return filepath.Join(home, ".cache", "go-zetasql"), nil
+		return filepath.Join(home, ".cache", "go-googlesql"), nil
 	}
 }
 
@@ -171,7 +171,7 @@ func platformString() string {
 
 func (i *Installer) getDownloadURLs() []string {
 	platform := platformString()
-	name := fmt.Sprintf("zetasql-%s-%s.tar.gz", platform, i.version)
+	name := fmt.Sprintf("googlesql-%s-%s.tar.gz", platform, i.version)
 	if i.opts.BaseURL != "" {
 		base := strings.TrimSuffix(i.opts.BaseURL, "/")
 		return []string{base + "/" + name}
@@ -184,9 +184,9 @@ func (i *Installer) getDownloadURLs() []string {
 func (i *Installer) log(msg string, args ...any) {
 	if i.opts.Verbose {
 		if len(args) > 0 {
-			fmt.Fprintf(os.Stderr, "[go-zetasql install] "+msg+" %v\n", args...)
+			fmt.Fprintf(os.Stderr, "[go-googlesql install] "+msg+" %v\n", args...)
 		} else {
-			fmt.Fprintln(os.Stderr, "[go-zetasql install] "+msg)
+			fmt.Fprintln(os.Stderr, "[go-googlesql install] "+msg)
 		}
 	}
 }
@@ -207,17 +207,17 @@ func ResolveModuleVersion() string {
 	return v
 }
 
-// ResolveModuleDir returns the directory of the go-zetasql module (e.g. in GOMODCACHE).
+// ResolveModuleDir returns the directory of the go-googlesql module (e.g. in GOMODCACHE).
 // It runs "go list -m -f '{{.Dir}}' github.com/vantaboard/go-googlesql" from the current directory.
 func ResolveModuleDir() (string, error) {
-	// Run from current dir so that if the user's project has go-zetasql in go.mod, we get that module's path.
+	// Run from current dir so that if the user's project has go-googlesql in go.mod, we get that module's path.
 	out, err := runGoList(modulePath, "{{.Dir}}")
 	if err != nil {
-		return "", fmt.Errorf("resolve go-zetasql module dir: %w", err)
+		return "", fmt.Errorf("resolve go-googlesql module dir: %w", err)
 	}
 	dir := strings.TrimSpace(string(out))
 	if dir == "" {
-		return "", errors.New("go list returned empty Dir for go-zetasql")
+		return "", errors.New("go list returned empty Dir for go-googlesql")
 	}
 	return dir, nil
 }

@@ -1,4 +1,4 @@
-package zetasql_test
+package googlesql_test
 
 import (
 	"testing"
@@ -18,32 +18,32 @@ func TestAnalyzer(t *testing.T) {
 		}),
 	)
 	catalog.AddGoogleSQLBuiltinFunctions(nil)
-	langOpt := zetasql.NewLanguageOptions()
-	langOpt.SetNameResolutionMode(zetasql.NameResolutionDefault)
+	langOpt := googlesql.NewLanguageOptions()
+	langOpt.SetNameResolutionMode(googlesql.NameResolutionDefault)
 	langOpt.SetProductMode(types.ProductExternal)
-	langOpt.SetEnabledLanguageFeatures([]zetasql.LanguageFeature{
-		zetasql.FeatureNamedArguments,
-		zetasql.FeatureNumericType,
-		zetasql.FeatureTablesample,
-		zetasql.FeatureTimestampNanos,
-		zetasql.FeatureV11HavingInAggregate,
-		zetasql.FeatureV11NullHandlingModifierInAggregate,
-		zetasql.FeatureV11OrderByCollate,
-		zetasql.FeatureV11SelectStarExceptReplace,
-		zetasql.FeatureV12SafeFunctionCall,
-		zetasql.FeatureJsonType,
-		zetasql.FeatureJsonArrayFunctions,
-		zetasql.FeatureJsonStrictNumberParsing,
+	langOpt.SetEnabledLanguageFeatures([]googlesql.LanguageFeature{
+		googlesql.FeatureNamedArguments,
+		googlesql.FeatureNumericType,
+		googlesql.FeatureTablesample,
+		googlesql.FeatureTimestampNanos,
+		googlesql.FeatureV11HavingInAggregate,
+		googlesql.FeatureV11NullHandlingModifierInAggregate,
+		googlesql.FeatureV11OrderByCollate,
+		googlesql.FeatureV11SelectStarExceptReplace,
+		googlesql.FeatureV12SafeFunctionCall,
+		googlesql.FeatureJsonType,
+		googlesql.FeatureJsonArrayFunctions,
+		googlesql.FeatureJsonStrictNumberParsing,
 	})
 	langOpt.SetSupportedStatementKinds([]ast.Kind{
 		ast.QueryStmt, ast.InsertStmt, ast.UpdateStmt, ast.DeleteStmt,
 	})
-	opt := zetasql.NewAnalyzerOptions()
+	opt := googlesql.NewAnalyzerOptions()
 	opt.SetAllowUndeclaredParameters(true)
 	opt.SetLanguage(langOpt)
-	opt.SetParseLocationRecordType(zetasql.ParseLocationRecordFullNodeScope)
+	opt.SetParseLocationRecordType(googlesql.ParseLocationRecordFullNodeScope)
 
-	out, err := zetasql.AnalyzeStatement("SELECT * FROM z_table WHERE col1 = 1000", catalog, opt)
+	out, err := googlesql.AnalyzeStatement("SELECT * FROM z_table WHERE col1 = 1000", catalog, opt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,21 +103,21 @@ func TestAnalyzeMultiStatements(t *testing.T) {
 			types.NewSimpleColumn(tableName, "col2", types.StringType()),
 		}),
 	)
-	langOpt := zetasql.NewLanguageOptions()
-	langOpt.SetNameResolutionMode(zetasql.NameResolutionDefault)
+	langOpt := googlesql.NewLanguageOptions()
+	langOpt.SetNameResolutionMode(googlesql.NameResolutionDefault)
 	langOpt.SetProductMode(types.ProductExternal)
 	langOpt.EnableMaximumLanguageFeatures()
 	langOpt.SetSupportedStatementKinds([]ast.Kind{ast.CreateFunctionStmt, ast.QueryStmt})
 	catalog.AddGoogleSQLBuiltinFunctions(langOpt.BuiltinFunctionOptions())
-	opt := zetasql.NewAnalyzerOptions()
+	opt := googlesql.NewAnalyzerOptions()
 	opt.SetAllowUndeclaredParameters(true)
 	opt.SetLanguage(langOpt)
 	query := `
 CREATE TEMP FUNCTION Add(x INT64, y INT64) AS (x + y);
 SELECT Add(3, 4);
 `
-	loc := zetasql.NewParseResumeLocation(query)
-	out, isEnd, err := zetasql.AnalyzeNextStatement(loc, catalog, opt)
+	loc := googlesql.NewParseResumeLocation(query)
+	out, isEnd, err := googlesql.AnalyzeNextStatement(loc, catalog, opt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ SELECT Add(3, 4);
 		[]*types.FunctionSignature{fnNode.Signature()},
 	)
 	catalog.AddFunction(fn)
-	out, isEnd, err = zetasql.AnalyzeNextStatement(loc, catalog, opt)
+	out, isEnd, err = googlesql.AnalyzeNextStatement(loc, catalog, opt)
 	if err != nil {
 		t.Fatal(err)
 	}

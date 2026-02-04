@@ -1,4 +1,4 @@
-package zetasql
+package googlesql
 
 import (
 	"unsafe"

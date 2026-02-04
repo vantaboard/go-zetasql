@@ -32,3 +32,7 @@ internal/ccall
 
 # GoogleSQL upstream; cloned at build time in cmd/updater, never committed
 cmd/updater/googlesql
+# Bazel export cache (execroot, external); populated by make export, not part of module build
+cmd/updater/cache
+# Generator binary (make generate)
+.bin

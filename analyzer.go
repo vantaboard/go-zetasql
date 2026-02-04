@@ -1,11 +1,11 @@
-package zetasql
+package googlesql
 
 import (
 	"fmt"
 	"unsafe"
 
 	"github.com/vantaboard/go-googlesql/ast"
-	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-zetasql"
+	internal "github.com/vantaboard/go-googlesql/internal/ccall/go-googlesql"
 	"github.com/vantaboard/go-googlesql/internal/helper"
 	"github.com/vantaboard/go-googlesql/resolved_ast"
 	"github.com/vantaboard/go-googlesql/types"
@@ -492,7 +492,7 @@ func AnalyzeExpression(sql string, catalog types.Catalog, opt *AnalyzerOptions) 
 }
 
 func AnalyzeType(typeName string, catalog types.Catalog, opt *AnalyzerOptions) ([]types.Type, error) {
-	return nil, fmt.Errorf("go-zetasql: unimplemented")
+	return nil, fmt.Errorf("go-googlesql: unimplemented")
 }
 
 func AnalyzeStatementFromParserAST(sql string, stmt ast.StatementNode, catalog types.Catalog, opt *AnalyzerOptions) (*AnalyzerOutput, error) {
@@ -524,13 +524,13 @@ func AnalyzeStatementFromParserAST(sql string, stmt ast.StatementNode, catalog t
 type TableNameSet struct{}
 
 func ExtractTableNamesFromStatement(sql string) (*TableNameSet, error) {
-	return nil, fmt.Errorf("go-zetasql: unimplemented")
+	return nil, fmt.Errorf("go-googlesql: unimplemented")
 }
 
 func ExtractTableNamesFromNextStatement(loc *ParseResumeLocation) (*TableNameSet, bool, error) {
-	return nil, false, fmt.Errorf("go-zetasql: unimplemented")
+	return nil, false, fmt.Errorf("go-googlesql: unimplemented")
 }
 
 func ExtractTableNamesFromScript(sql string) (*TableNameSet, error) {
-	return nil, fmt.Errorf("go-zetasql: unimplemented")
+	return nil, fmt.Errorf("go-googlesql: unimplemented")
 }

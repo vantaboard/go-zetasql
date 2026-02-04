@@ -1,9 +1,9 @@
-# go-zetasql
+# go-googlesql
 
 ![Go](https://github.com/vantaboard/go-googlesql/workflows/Go/badge.svg)
 [![GoDoc](https://godoc.org/github.com/vantaboard/go-googlesql?status.svg)](https://pkg.go.dev/github.com/vantaboard/go-googlesql?tab=doc)
 
-Go bindings for [GoogleSQL](https://github.com/google/zetasql)
+Go bindings for [GoogleSQL](https://github.com/google/googlesql)
 
 GoogleSQL can parse all queries related to Cloud Spanner and BigQuery. This functionality is provided from the Go language using cgo. 
 
@@ -16,7 +16,7 @@ GoogleSQL can parse all queries related to Cloud Spanner and BigQuery. This func
   - You can create a static binary even with `CGO_ENABLED=1` by specifying the following options at build time: `--ldflags '-extldflags "-static"'`
 
 - Can access all the APIs of the GoogleSQL parser
-  - The GoogleSQL parser is not publicly available, but it is available in go-zetasql
+  - The GoogleSQL parser is not publicly available, but it is available in go-googlesql
 
 - Can access analyzer APIs
 
@@ -34,7 +34,7 @@ In the features of GoogleSQL, you can use the functions of the following package
 
 # Prerequisites
 
-go-zetasql uses cgo. Therefore, `CGO_ENABLED=1` is required to build.  
+go-googlesql uses cgo. Therefore, `CGO_ENABLED=1` is required to build.  
 Also, the compiler recommends `clang++`. Please set `CXX=clang++` to install.
 
 |  Environment Name |  Value                   |
@@ -72,6 +72,8 @@ Also, the compiler recommends `clang++`. Please set `CXX=clang++` to install.
 
    See [cmd/updater](cmd/updater) for prerequisites.
 
+   **If you see a build error** like `no required module provides package ... internal/ccall` or `cannot find package ... internal/ccall`, run the installer (step 2) first, then build with `go build -tags=ccall ./...` or `make build`.
+
 # Synopsis
 
 ## Parse SQL statement
@@ -86,7 +88,7 @@ import (
 
 func main() {
 
-  stmt, err := zetasql.ParseStatement("SELECT * FROM Samples WHERE id = 1", nil)
+  stmt, err := googlesql.ParseStatement("SELECT * FROM Samples WHERE id = 1", nil)
   if err != nil {
     panic(err)
   }
@@ -110,7 +112,7 @@ import (
 
 func main() {
 
-  stmt, err := zetasql.ParseStatement("SELECT * FROM Samples WHERE id = 1", nil)
+  stmt, err := googlesql.ParseStatement("SELECT * FROM Samples WHERE id = 1", nil)
   if err != nil {
     panic(err)
   }
@@ -150,12 +152,12 @@ func main() {
     }),
   )
   catalog.AddGoogleSQLBuiltinFunctions()
-  out, err := zetasql.AnalyzeStatement("SELECT * FROM Samples WHERE id = 1000", catalog, nil)
+  out, err := googlesql.AnalyzeStatement("SELECT * FROM Samples WHERE id = 1000", catalog, nil)
   if err != nil {
     panic(err)
   }
 
-  // get statement node from zetasql.AnalyzerOutput.
+  // get statement node from googlesql.AnalyzerOutput.
   stmt := out.Statement()
 
   // traverse all nodes of stmt.
@@ -181,9 +183,9 @@ fmt.Println(stmt.DebugString())
 
 Apache-2.0 License
 
-When building from source (cmd/updater), go-zetasql uses the source code of the following libraries. Therefore, the license is set according to the license of the dependent library.
+When building from source (cmd/updater), go-googlesql uses the source code of the following libraries. Therefore, the license is set according to the license of the dependent library.
 
-- [zetasql](https://github.com/google/zetasql): [Apache License 2.0](https://github.com/google/zetasql/blob/master/LICENSE)
+- [googlesql](https://github.com/google/googlesql): [Apache License 2.0](https://github.com/google/googlesql/blob/master/LICENSE)
 - [abseil](https://github.com/abseil/abseil-cpp): [Apache License 2.0](https://github.com/abseil/abseil-cpp/blob/master/LICENSE)
 - [json](https://github.com/nlohmann/json): [MIT License](https://github.com/nlohmann/json/blob/develop/LICENSE.MIT)
 - [re2](https://github.com/google/re2): [BSD 3-Clause](https://github.com/google/re2/blob/main/LICENSE)
