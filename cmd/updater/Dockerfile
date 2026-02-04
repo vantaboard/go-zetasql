@@ -28,6 +28,7 @@ COPY googlesql /googlesql
 WORKDIR /googlesql
 
 # Build targets that produce all generated headers and protos required by the CGo build.
+# reference_impl is omitted for 2022.02.01 (no BUILD in zetasql/reference_impl at that tag).
 RUN bazel build \
   '//zetasql/public:sql_formatter' \
   '//zetasql/resolved_ast:resolved_ast' \
@@ -36,7 +37,6 @@ RUN bazel build \
   '//zetasql/parser:parse_tree_serializer' \
   '//zetasql/scripting:script_exception_cc_proto' \
   '//zetasql/scripting:script_executor_state_cc_proto' \
-  '//zetasql/public/functions:common_proto' \
-  '//zetasql/reference_impl:evaluator_table_iterator_cc_proto'
+  '//zetasql/public/functions:common_proto'
 
 COPY export.sh .

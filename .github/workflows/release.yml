@@ -62,6 +62,15 @@ jobs:
         working-directory: cmd/updater
         run: make update
 
+      - name: Generate Go bindings
+        run: make generate
+
+      - name: Build Go module
+        run: make build
+        env:
+          CC: clang
+          CXX: clang++
+
       - name: Create tarball
         run: |
           VERSION="${{ needs.version.outputs.version }}"
