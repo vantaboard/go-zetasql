@@ -1,0 +1,19 @@
+go-zetasql / go-googlesql
+
+Copyright 2022-2025 The go-zetasql Authors
+
+This distribution includes or is built from source that includes the following
+third-party software. Each component's license applies to that component.
+
+- googlesql (https://github.com/google/googlesql): Apache License 2.0
+- abseil (https://github.com/abseil/abseil-cpp): Apache License 2.0
+- nlohmann/json (https://github.com/nlohmann/json): MIT License
+- re2 (https://github.com/google/re2): BSD 3-Clause License
+- BoringSSL (https://github.com/google/boringssl): ISC License
+- Protocol Buffers (https://github.com/protocolbuffers/protobuf): See protobuf LICENSE
+- ICU (https://github.com/unicode-org/icu): ICU License
+- farmhash (https://github.com/google/farmhash): MIT License
+- googletest (https://github.com/google/googletest): BSD 3-Clause License (build/test only)
+
+See the LICENSE file in this distribution for the Apache License 2.0 terms under
+which this project is licensed.

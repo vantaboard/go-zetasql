@@ -30,13 +30,14 @@ jobs:
         id: version
         run: |
           if [ -n "${{ github.event.inputs.version }}" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+            VER="${{ github.event.inputs.version }}"
           elif [ -n "${{ github.event.release.tag_name }}" ]; then
-            echo "version=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+            VER="${{ github.event.release.tag_name }}"
           else
-            echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+            VER="${GITHUB_REF#refs/tags/}"
           fi
-          echo "Version: ${{ steps.version.outputs.version }}"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "Version: $VER"
 
       - name: Clone googlesql at pinned commit
         working-directory: cmd/updater
@@ -57,20 +58,21 @@ jobs:
       - name: Create tarball
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          tar -czvf "zetasql-linux-amd64-${VERSION}.tar.gz" -C . internal/ccall
-          # Rename so tarball has top-level "ccall" for installer (extract expects ccall/)
+          tar -czvf "googlesql-linux-amd64-${VERSION}.tar.gz" -C . internal/ccall
+          # Rename so tarball has top-level ccall/ plus LICENSE and NOTICE for upstream distribution compliance
           mkdir -p dist
-          tar -xzf "zetasql-linux-amd64-${VERSION}.tar.gz" -C dist
+          tar -xzf "googlesql-linux-amd64-${VERSION}.tar.gz" -C dist
           mv dist/internal/ccall dist/ccall
           rmdir dist/internal 2>/dev/null || true
-          tar -czvf "zetasql-linux-amd64-${VERSION}.tar.gz" -C dist ccall
-          ls -la "zetasql-linux-amd64-${VERSION}.tar.gz"
+          cp LICENSE NOTICE dist/
+          tar -czvf "googlesql-linux-amd64-${VERSION}.tar.gz" -C dist ccall LICENSE NOTICE
+          ls -la "googlesql-linux-amd64-${VERSION}.tar.gz"
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.version }}
-          files: zetasql-linux-amd64-${{ steps.version.outputs.version }}.tar.gz
+          files: googlesql-linux-amd64-${{ steps.version.outputs.version }}.tar.gz
           fail_on_unmatched: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
