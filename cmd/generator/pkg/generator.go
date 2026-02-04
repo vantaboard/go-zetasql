@@ -864,20 +864,27 @@ func (g *Generator) createBindCCParam(lib *Lib) *BindCCParam {
 	return param
 }
 
+type NamedImport struct {
+	Name string
+	Path string
+}
+
 type BindGoParam struct {
-	Compiler         string
-	DebugMode        bool
-	Pkg              string
-	FQDN             string
-	ImportUnsafePkg  bool
-	IncludePaths     []string
-	CXXFlags         []string
-	LDFlags          []string
-	BridgeHeaders    []string
-	ImportGoLibs     []string
-	Funcs            []Func
-	ExportFuncs      []ExportFunc
-	IncludeBridgeInc bool // false for root package (no local bridge.inc)
+	Compiler          string
+	DebugMode         bool
+	Pkg               string
+	FQDN              string
+	ImportUnsafePkg   bool
+	IncludePaths      []string
+	CXXFlags          []string
+	LDFlags           []string
+	BridgeHeaders     []string
+	BridgeIncPaths    []string      // root only: paths to each package's bridge.inc (unused; root uses CallPkg instead)
+	ImportGoLibs      []string      // blank imports (_ "path")
+	NamedImportGoLibs []NamedImport // root only: named imports (name "path") so root can call dep packages
+	Funcs             []Func
+	ExportFuncs       []ExportFunc
+	IncludeBridgeInc  bool // lib packages: include local bridge.inc
 }
 
 type BridgeExternParam struct {
@@ -894,6 +901,8 @@ type Func struct {
 	BasePkg string
 	Name    string
 	Args    []Type
+	// CallPkg is set for root package only: call this package's BasePkg_Name instead of C.export_*.
+	CallPkg string
 }
 
 type ExportFunc struct {
@@ -1022,9 +1031,11 @@ func (g *Generator) createRootBindGoParam(cxxflags, ldflags []string) *BindGoPar
 				continue
 			}
 			libName := fmt.Sprintf("github.com/vantaboard/go-googlesql/internal/ccall/%s", dep)
+			callPkg := filepath.Base(dep)
 			if _, ok := importGoLibsSet[libName]; !ok {
 				importGoLibsSet[libName] = struct{}{}
 				param.ImportGoLibs = append(param.ImportGoLibs, libName)
+				param.NamedImportGoLibs = append(param.NamedImportGoLibs, NamedImport{Name: callPkg, Path: libName})
 			}
 			// Bridge headers and export funcs only for packages that have bridge definitions.
 			depPkg, exists := g.importSymbolPackageMap[dep]
@@ -1047,16 +1058,13 @@ func (g *Generator) createRootBindGoParam(cxxflags, ldflags []string) *BindGoPar
 				if needsImportUnsagePkg {
 					param.ImportUnsafePkg = true
 				}
+				fn.CallPkg = callPkg
 				param.ExportFuncs = append(param.ExportFuncs, ExportFunc{
 					Func:    fn,
 					LibName: libName,
 				})
+				param.Funcs = append(param.Funcs, fn)
 			}
-		}
-		funcs, needsImportUnsafePkg := g.pkgToFuncs("zetasql", pkg)
-		param.Funcs = append(param.Funcs, funcs...)
-		if needsImportUnsafePkg {
-			param.ImportUnsafePkg = true
 		}
 	}
 	return param
@@ -1107,7 +1115,11 @@ func (g *Generator) createBindGoParam(lib *Lib, cxxflags, ldflags []string) *Bin
 	param.ImportGoLibs = importGoLibs
 	param.BridgeHeaders = bridgeHeaders
 	param.ExportFuncs = exportFuncs
-	if pkg, exists := g.pkgMap[pkgName]; exists {
+	pkg, exists := g.pkgMap[pkgName]
+	if !exists {
+		pkg, exists = g.pkgMap[strings.Replace(pkgName, "go-googlesql", "zetasql", 1)]
+	}
+	if exists {
 		pkg := pkg
 		funcs, needsImportUnsafePkg := g.pkgToFuncs(lib.Name, &pkg)
 		param.Funcs = funcs

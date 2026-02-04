@@ -25,7 +25,12 @@ func ccallDir() string {
 	return filepath.Join(internalDir(), "ccall")
 }
 
+// toSourceDirFromLibName returns the path under ccall/ where the lib's source lives.
+// The updater copies the main tree to go-googlesql, so "zetasql" maps there.
 func toSourceDirFromLibName(lib string) string {
+	if lib == "zetasql" {
+		return filepath.Join(ccallDir(), "go-googlesql")
+	}
 	return filepath.Join(ccallDir(), lib)
 }
 
@@ -35,6 +40,21 @@ func existsFile(path string) bool {
 }
 
 func goPkgPath(base, pkg string) string {
+	// Output import path uses go-googlesql (not go-zetasql) to match Go imports.
+	if strings.HasPrefix(base, "zetasql") {
+		suffix := base[len("zetasql"):]
+		if suffix == "" {
+			return "go-googlesql/" + pkg
+		}
+		return "go-googlesql" + suffix + "/" + pkg
+	}
+	// Source tree is under ccall/go-googlesql, so parsed paths can have base "go-googlesql/..."; do not add another "go-" prefix.
+	if strings.HasPrefix(base, "go-googlesql") {
+		if base == "go-googlesql" {
+			return "go-googlesql/" + pkg
+		}
+		return base + "/" + pkg
+	}
 	newPath := []string{}
 	for _, path := range strings.Split(base, "/") {
 		if path == "internal" {
@@ -51,4 +71,19 @@ func normalizeGoPkgPath(name string) string {
 	base := filepath.Join(splitted[:len(splitted)-1]...)
 	pkg := splitted[len(splitted)-1]
 	return goPkgPath(base, pkg)
+}
+
+// ccallIncludePath returns the path under ccall/ for C++ #include (e.g. "dep/export.inc").
+// On disk we have "absl/...", "protobuf/...", "go-googlesql/...", not "go-absl/...".
+func ccallIncludePath(basePkg, pkg string) string {
+	if strings.HasPrefix(basePkg, "absl") || strings.HasPrefix(basePkg, "protobuf") ||
+		strings.HasPrefix(basePkg, "re2") || strings.HasPrefix(basePkg, "icu") ||
+		strings.HasPrefix(basePkg, "json") || strings.HasPrefix(basePkg, "googleapis") ||
+		strings.HasPrefix(basePkg, "flex") {
+		if pkg == "" {
+			return basePkg
+		}
+		return basePkg + "/" + pkg
+	}
+	return goPkgPath(basePkg, pkg)
 }
