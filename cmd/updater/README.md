@@ -31,6 +31,8 @@ GoogleSQL is **not** a submodule. It is cloned at build time into `./googlesql` 
    make update
    ```
 
+   After copying, the updater **applies patches** to upstream files (e.g. redefinition fixes in `type.cc`, `resolver_query.cc`, include guards in `public_suffix_list_data.h`) and **writes stub headers** (farmhash, differential_privacy algorithms) under `internal/ccall`. So fixes and stubs are preserved every time you run `make update` or repopulate ccall.
+
 4. **Generate Go bindings** (from repo root):
 
    ```bash

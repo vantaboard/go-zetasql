@@ -122,7 +122,7 @@ var copyExternalLibMap = map[string]string{
 }
 
 var copyOutExternalLibMap = map[string]string{
-	"com_google_googleapis": "googleapis",
+	"com_googleapis_googleapis": "googleapis", // Bazel external name for googleapis
 }
 
 func main() {
@@ -141,7 +141,7 @@ func main() {
 				return false, nil
 			}
 			switch filepath.Ext(src) {
-			case ".h", ".hh", ".cc", ".c", ".inc":
+			case ".h", ".hh", ".hpp", ".cc", ".c", ".inc":
 				return false, nil
 			}
 			return true, nil
@@ -188,9 +188,11 @@ func main() {
 			if (info.Mode() & fs.ModeSymlink) != 0 {
 				return nil
 			}
-			fileName := filepath.Base(path)
-			lastChar := fileName[len(fileName)-1]
-			if lastChar != 'h' && lastChar != 'c' {
+			ext := filepath.Ext(path)
+			switch ext {
+			case ".h", ".hh", ".hpp", ".cc", ".c", ".inc":
+				// copy
+			default:
 				return nil
 			}
 			idx := strings.LastIndex(path, outTree)
@@ -230,6 +232,17 @@ func main() {
 		copyBazelOutToCcall(path)
 		return filepath.SkipAll
 	})
+
+	// Apply patches to upstream files so build fixes (redefinition avoidance, include guards) persist after regeneration.
+	if err := applyPatches(ccallDir()); err != nil {
+		fmt.Fprintln(os.Stderr, "updater: applyPatches:", err)
+		os.Exit(1)
+	}
+	// Write stub headers (farmhash, differential_privacy) so they exist even when ccall is repopulated.
+	if err := writeStubs(ccallDir()); err != nil {
+		fmt.Fprintln(os.Stderr, "updater: writeStubs:", err)
+		os.Exit(1)
+	}
 
 	// Fail fast if required generated files are missing (avoids opaque C++ errors later in make build).
 	requiredFiles := []string{

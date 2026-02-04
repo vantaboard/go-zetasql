@@ -86,7 +86,7 @@ func (g *Generator) Generate() error {
 		return err
 	}
 	g.internalExportNames = internalExportNames
-	if err := g.ensureExportIncForExternalDeps(parsedFiles); err != nil {
+	if err := g.ensureExportIncForAllDeps(parsedFiles); err != nil {
 		return err
 	}
 	for _, parsedFile := range parsedFiles {
@@ -122,6 +122,79 @@ func (g *Generator) Generate() error {
 	if _, err := os.Stat(filepath.Join(ccallDir(), "go-googlesql")); err == nil {
 		if _, err := os.Lstat(zetasqlLink); err != nil && os.IsNotExist(err) {
 			_ = os.Symlink(".", zetasqlLink)
+		}
+	}
+	if err := g.createStubHeaders(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// createStubHeaders creates minimal stub headers for deps that may not be present in the ccall copy
+// (e.g. farmhash, differential-privacy algorithms) so the C++ build can complete.
+func (g *Generator) createStubHeaders() error {
+	stubs := []struct {
+		path string
+		body string
+	}{
+		{
+			path: "farmhash.h",
+			body: `// Stub for farmhash when not copying com_google_farmhash external.
+#ifndef FARMHASH_STUB_H_
+#define FARMHASH_STUB_H_
+#include <cstdint>
+#include <cstring>
+namespace farmhash {
+inline uint32_t Hash32(const char* s, size_t len) { (void)s; return static_cast<uint32_t>(len); }
+inline uint64_t Hash64(const char* s, size_t len) { (void)s; return static_cast<uint64_t>(len); }
+inline uint64_t Fingerprint64(const char* s, size_t len) { (void)s; return static_cast<uint64_t>(len); }
+}
+#endif
+`,
+		},
+		{
+			path: "algorithms/partition-selection.h",
+			body: `// Stub for differential-privacy partition-selection when not copying external.
+#ifndef ALGORITHMS_PARTITION_SELECTION_STUB_H_
+#define ALGORITHMS_PARTITION_SELECTION_STUB_H_
+namespace differential_privacy {
+template <typename T>
+class PartitionSelection { public: bool ShouldKeep(double) const { return true; } };
+template <typename T>
+class LaplacePartitionSelection : public PartitionSelection<T> {
+ public:
+  bool ShouldKeep(double epsilon) const { (void)epsilon; return true; }
+};
+}
+#endif
+`,
+		},
+		{
+			path: "algorithms/algorithm.h",
+			body: `// Stub for differential-privacy algorithm when not copying external.
+#ifndef ALGORITHMS_ALGORITHM_STUB_H_
+#define ALGORITHMS_ALGORITHM_STUB_H_
+namespace differential_privacy { template <typename T> class Algorithm {}; }
+#endif
+`,
+		},
+		{
+			path: "algorithms/bounded-mean.h",
+			body: `// Stub for differential-privacy bounded-mean when not copying external.
+#ifndef ALGORITHMS_BOUNDED_MEAN_STUB_H_
+#define ALGORITHMS_BOUNDED_MEAN_STUB_H_
+namespace differential_privacy { template <typename T> class BoundedMean { public: double Mean() const { return 0; } }; }
+#endif
+`,
+		},
+	}
+	for _, s := range stubs {
+		fullPath := filepath.Join(ccallDir(), s.path)
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(fullPath, []byte(s.body), 0o600); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -335,7 +408,8 @@ func (g *Generator) generateRootBindCC(outputDir string) error {
 		if !strings.Contains(pkg.Name, "zetasql") {
 			continue
 		}
-		libs = append(libs, pkg.Name)
+		// Use go package path (go-googlesql/...) for includes; on disk we have go-googlesql not go-zetasql.
+		libs = append(libs, normalizeGoPkgPath(pkg.Name))
 	}
 	output, err := g.generateCCSourceByTemplate(
 		"templates/root_bind.cc.tmpl",
@@ -360,25 +434,14 @@ func (g *Generator) generateExportInc(lib *Lib) error {
 	return os.WriteFile(filepath.Join(dir, "export.inc"), []byte{}, 0o600)
 }
 
-// ensureExportIncForExternalDeps creates export.inc for every external dep (absl, protobuf, etc.)
-// that is referenced from cclibs/ccprotos but does not have its own Lib in the parsed BUILD files.
-func (g *Generator) ensureExportIncForExternalDeps(parsedFiles []*ParsedFile) error {
+// ensureExportIncForAllDeps creates export.inc for every dep referenced from cclibs/ccprotos
+// (external and go-googlesql). Some deps are only referenced, not built as libs, so they
+// would otherwise lack export.inc and the C++ build would fail.
+func (g *Generator) ensureExportIncForAllDeps(parsedFiles []*ParsedFile) error {
 	seen := map[string]struct{}{}
-	externalPrefixes := []string{"absl", "protobuf", "re2", "icu", "json", "googleapis", "flex"}
-	isExternal := func(basePkg string) bool {
-		for _, p := range externalPrefixes {
-			if strings.HasPrefix(basePkg, p) {
-				return true
-			}
-		}
-		return false
-	}
 	for _, f := range parsedFiles {
 		for _, lib := range append(f.cclibs, f.ccprotos...) {
 			for _, dep := range lib.Deps {
-				if !isExternal(dep.BasePkg) {
-					continue
-				}
 				key := dep.BasePkg + "/" + dep.Pkg
 				if _, ok := seen[key]; ok {
 					continue
@@ -429,7 +492,7 @@ func (g *Generator) generateRootBridgeH(outputDir string) error {
 		if !strings.Contains(pkg.Name, "zetasql") {
 			continue
 		}
-		libs = append(libs, pkg.Name)
+		libs = append(libs, normalizeGoPkgPath(pkg.Name))
 	}
 	output, err := g.generateCCSourceByTemplate(
 		"templates/root_bridge.h.tmpl",
@@ -785,27 +848,41 @@ func (g *Generator) createRootBindGoParam(cxxflags, ldflags []string) *BindGoPar
 	}
 	param.IncludePaths = includePaths
 	bridgeHeaderMap := map[string]struct{}{}
+	importGoLibsSet := map[string]struct{}{}
 	for _, pkg := range g.pkgs() {
 		pkgName := pkg.Name
-		for _, dep := range g.pkgToAllDeps[pkgName] {
-			if dep == pkgName {
+		// pkgToAllDeps is keyed by libMap (go-googlesql/...); bridge uses zetasql/... so normalize.
+		libKey := normalizeGoPkgPath(pkgName)
+		for _, dep := range g.pkgToAllDeps[libKey] {
+			if dep == libKey {
 				continue
 			}
-			pkg, exists := g.importSymbolPackageMap[dep]
+			// Only import go-googlesql subpackages; they have bind_linux.go. External deps (absl, etc.)
+			// often only have dummy.go with build tag "required" and would fail to build.
+			if !strings.HasPrefix(dep, "go-googlesql") {
+				continue
+			}
+			libName := fmt.Sprintf("github.com/vantaboard/go-googlesql/internal/ccall/%s", dep)
+			if _, ok := importGoLibsSet[libName]; !ok {
+				importGoLibsSet[libName] = struct{}{}
+				param.ImportGoLibs = append(param.ImportGoLibs, libName)
+			}
+			// Bridge headers and export funcs only for packages that have bridge definitions.
+			depPkg, exists := g.importSymbolPackageMap[dep]
+			if !exists {
+				depPkg, exists = g.pkgMap[strings.Replace(dep, "go-googlesql", "zetasql", 1)]
+			}
 			if !exists {
 				continue
 			}
-			goPkgPath := normalizeGoPkgPath(dep)
-			libName := fmt.Sprintf("github.com/vantaboard/go-googlesql/internal/ccall/%s", goPkgPath)
-			param.ImportGoLibs = append(param.ImportGoLibs, libName)
-			basePkg := filepath.Base(goPkgPath)
-			bridgeHeader := filepath.Join(ccallDir, goPkgPath, "bridge.h")
+			basePkg := filepath.Base(dep)
+			bridgeHeader := filepath.Join(ccallDir, dep, "bridge.h")
 			if _, exists := bridgeHeaderMap[bridgeHeader]; exists {
 				continue
 			}
 			param.BridgeHeaders = append(param.BridgeHeaders, bridgeHeader)
 			bridgeHeaderMap[bridgeHeader] = struct{}{}
-			for _, method := range pkg.Methods {
+			for _, method := range depPkg.Methods {
 				method := method
 				fn, needsImportUnsagePkg := g.pkgMethodToFunc(basePkg, &method)
 				if needsImportUnsagePkg {
