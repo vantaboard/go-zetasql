@@ -23,13 +23,34 @@ GoogleSQL is **not** a submodule. It is cloned at build time into `./googlesql` 
    make export
    ```
 
+   The export must complete successfully so that Bazel-generated headers (e.g. `resolved_ast.h`, `*.pb.h`) are present in the cache. Without them, `make build` from the repo root will fail with missing-header errors.
+
 3. **Copy to internal/ccall**:
 
    ```bash
    make update
    ```
 
-Then build the Go module from the repo root as usual. To push pre-built artifacts, run the release-assets workflow (it clones googlesql, builds, and uploads the tarball).
+4. **Generate Go bindings** (from repo root):
+
+   ```bash
+   cd ../..
+   make generate
+   ```
+
+5. **Build the Go module** (from repo root):
+
+   ```bash
+   make build
+   ``` To push pre-built artifacts, run the release-assets workflow (it clones googlesql, builds, and uploads the tarball).
+
+## Inspecting the cache
+
+You can run an interactive shell in the built image to inspect the raw cache (e.g. Bazel output under `/tmp` after `export`):
+
+```bash
+docker run -it --rm zetasql
+```
 
 ## Removing the old submodule (one-time)
 
