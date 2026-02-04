@@ -1,16 +1,30 @@
-FROM golang:1.21-bookworm
+# Use Bullseye: Python 3.9 (collections.Mapping still in collections) and older glibc/GCC (SIGSTKSZ macro, no constexpr strictness).
+# Install Go 1.25 from tarball since official image only has 1.25-bookworm and 1.25-trixie (newer Python/glibc).
+FROM debian:bullseye-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates gnupg
-RUN curl -fsSL https://bazel.build/bazel-release.pub.gpg | gpg --dearmor -o /usr/share/keyrings/bazel-archive-keyring.gpg
-RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/bazel-archive-keyring.gpg] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list
-RUN apt-get update && apt-get install --no-install-recommends -y make g++ git python3 openjdk-17-jdk unzip libtinfo5
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates gnupg make g++ git python3 openjdk-17-jdk unzip libtinfo5 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://go.dev/dl/go1.25.6.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+    && echo 'export PATH=$PATH:/usr/local/go/bin' >> /etc/profile.d/go.sh
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+RUN curl -fsSL https://bazel.build/bazel-release.pub.gpg | gpg --dearmor -o /usr/share/keyrings/bazel-archive-keyring.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/bazel-archive-keyring.gpg] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list
+
+# Install Bazel version required by googlesql (from .bazelversion). Must copy before apt-get install.
+COPY googlesql/.bazelversion /tmp/googlesql-bazelversion
+RUN apt-get update && apt-get install --no-install-recommends -y "bazel-$(cat /tmp/googlesql-bazelversion)" \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm /tmp/googlesql-bazelversion
+
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 100
-RUN go install github.com/bazelbuild/bazelisk@v1.19.0 && ln -s /go/bin/bazelisk /usr/local/bin/bazel
 
 COPY googlesql /googlesql
 
 WORKDIR /googlesql
 
-RUN bazel build '//googlesql/public:sql_formatter'
+RUN bazel build '//zetasql/public:sql_formatter'
 
 COPY export.sh .
