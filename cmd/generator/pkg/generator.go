@@ -174,7 +174,32 @@ class LaplacePartitionSelection : public PartitionSelection<T> {
 			body: `// Stub for differential-privacy algorithm when not copying external.
 #ifndef ALGORITHMS_ALGORITHM_STUB_H_
 #define ALGORITHMS_ALGORITHM_STUB_H_
-namespace differential_privacy { template <typename T> class Algorithm {}; }
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+
+namespace differential_privacy {
+
+template <typename T>
+struct AnonymousResult {
+  T value = {};
+};
+
+template <typename T>
+T GetValue(const AnonymousResult<T>& r) {
+  return r.value;
+}
+
+template <typename T>
+class Algorithm {
+ public:
+  virtual ~Algorithm() = default;
+  void AddEntry(T) {}
+  virtual absl::StatusOr<AnonymousResult<T>> PartialResult() {
+    return AnonymousResult<T>{};
+  }
+};
+
+}  // namespace differential_privacy
 #endif
 `,
 		},
@@ -183,7 +208,28 @@ namespace differential_privacy { template <typename T> class Algorithm {}; }
 			body: `// Stub for differential-privacy bounded-mean when not copying external.
 #ifndef ALGORITHMS_BOUNDED_MEAN_STUB_H_
 #define ALGORITHMS_BOUNDED_MEAN_STUB_H_
-namespace differential_privacy { template <typename T> class BoundedMean { public: double Mean() const { return 0; } }; }
+#include "absl/status/statusor.h"
+#include "algorithms/algorithm.h"
+#include <memory>
+
+namespace differential_privacy {
+
+template <typename T>
+class BoundedMean : public Algorithm<T> {
+ public:
+  double Mean() const { return 0; }
+  class Builder {
+   public:
+    Builder& SetEpsilon(double) { return *this; }
+    Builder& SetLower(T) { return *this; }
+    Builder& SetUpper(T) { return *this; }
+    absl::StatusOr<std::unique_ptr<Algorithm<T>>> Build() {
+      return std::make_unique<BoundedMean>();
+    }
+  };
+};
+
+}  // namespace differential_privacy
 #endif
 `,
 		},
