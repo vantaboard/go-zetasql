@@ -361,7 +361,7 @@ func (g *Generator) generate(f *ParsedFile) error {
 		if err := g.generateBridgeCCInc(outputDir); err != nil {
 			return err
 		}
-		if err := g.generateBridgeInc(outputDir); err != nil {
+		if err := g.generateBridgeInc(outputDir, lib); err != nil {
 			return err
 		}
 		if err := g.generateBindGO(outputDir, lib); err != nil {
@@ -385,9 +385,12 @@ func (g *Generator) generate(f *ParsedFile) error {
 		if err := g.generateBridgeCCInc(outputDir); err != nil {
 			return err
 		}
-		if err := g.generateBridgeInc(outputDir); err != nil {
+		if err := g.generateBridgeInc(outputDir, lib); err != nil {
 			return err
 		}
+	}
+	if err := g.generateRootBridgeIncForZetasqlPackages(); err != nil {
+		return err
 	}
 	if err := g.generateRootBindCC(filepath.Join(ccallDir(), "go-googlesql")); err != nil {
 		return err
@@ -405,10 +408,10 @@ func (g *Generator) generateRootBindCC(outputDir string) error {
 	pkgs := g.pkgs()
 	libs := make([]string, 0, len(pkgs))
 	for _, pkg := range pkgs {
-		if !strings.Contains(pkg.Name, "zetasql") {
+		// Include every package that has bridge methods (zetasql + import e.g. absl/time).
+		if len(pkg.Methods) == 0 {
 			continue
 		}
-		// Use go package path (go-googlesql/...) for includes; on disk we have go-googlesql not go-zetasql.
 		libs = append(libs, normalizeGoPkgPath(pkg.Name))
 	}
 	output, err := g.generateCCSourceByTemplate(
@@ -489,7 +492,7 @@ func (g *Generator) generateRootBridgeH(outputDir string) error {
 	pkgs := g.pkgs()
 	libs := make([]string, 0, len(pkgs))
 	for _, pkg := range pkgs {
-		if !strings.Contains(pkg.Name, "zetasql") {
+		if len(pkg.Methods) == 0 {
 			continue
 		}
 		libs = append(libs, normalizeGoPkgPath(pkg.Name))
@@ -608,14 +611,117 @@ func (g *Generator) generateBridgeCCInc(outputDir string) error {
 	return nil
 }
 
-func (g *Generator) generateBridgeInc(outputDir string) error {
-	if existsFile(filepath.Join(outputDir, "bridge.inc")) {
-		return nil
+func (g *Generator) createBridgeIncParam(lib *Lib) *BridgeIncParam {
+	param := &BridgeIncParam{
+		FQDN: fqdnForExport(lib.BasePkg, lib.Name),
 	}
-	if err := os.WriteFile(filepath.Join(outputDir, "bridge.inc"), nil, 0o600); err != nil {
-		return err
+	pkgName := fmt.Sprintf("%s/%s", lib.BasePkg, lib.Name)
+	pkg, exists := g.pkgMap[pkgName]
+	if !exists {
+		// Bridge YAML uses zetasql/...; BUILD uses go-googlesql/...
+		pkg, exists = g.pkgMap[strings.Replace(pkgName, "go-googlesql", "zetasql", 1)]
+	}
+	if !exists || len(pkg.Methods) == 0 {
+		return param
+	}
+	var sb strings.Builder
+	for _, method := range pkg.Methods {
+		args := make([]struct{ C string; IsOut bool }, 0, len(method.Args)+len(method.Ret))
+		for _, arg := range method.Args {
+			args = append(args, struct{ C string; IsOut bool }{C: g.toCType(arg), IsOut: false})
+		}
+		for _, ret := range method.Ret {
+			args = append(args, struct{ C string; IsOut bool }{C: fmt.Sprintf("%s*", g.toCType(ret)), IsOut: true})
+		}
+		fmt.Fprintf(&sb, "void GO_EXPORT(%s)( ", method.Name)
+		for i, a := range args {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			fmt.Fprintf(&sb, "%s arg%d", a.C, i)
+		}
+		sb.WriteString(" ) {\n")
+		for i, a := range args {
+			if a.IsOut {
+				fmt.Fprintf(&sb, "  *arg%d = 0;\n", i)
+			} else {
+				fmt.Fprintf(&sb, "  (void)arg%d;\n", i)
+			}
+		}
+		sb.WriteString("}\n\n")
+	}
+	param.BindSourceCode = strings.TrimSuffix(sb.String(), "\n\n")
+	return param
+}
+
+// generateRootBridgeIncForZetasqlPackages generates bridge.inc for every package
+// that root_bind.cc includes (zetasql + import e.g. absl), so all C.export_zetasql_* symbols are defined.
+func (g *Generator) generateRootBridgeIncForZetasqlPackages() error {
+	for _, pkg := range g.pkgs() {
+		if len(pkg.Methods) == 0 {
+			continue
+		}
+		param := g.createBridgeIncParamFromPackage(pkg)
+		includePath := normalizeGoPkgPath(pkg.Name)
+		outputDir := filepath.Join(ccallDir(), includePath)
+		if err := os.MkdirAll(outputDir, 0o755); err != nil {
+			return err
+		}
+		output, err := g.generateCCSourceByTemplate("templates/bridge.inc.tmpl", param)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(outputDir, "bridge.inc"), output, 0o600); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+func (g *Generator) createBridgeIncParamFromPackage(pkg *Package) *BridgeIncParam {
+	param := &BridgeIncParam{
+		FQDN: strings.ReplaceAll(pkg.Name, "/", "_"),
+	}
+	if len(pkg.Methods) == 0 {
+		return param
+	}
+	var sb strings.Builder
+	for _, method := range pkg.Methods {
+		args := make([]struct{ C string; IsOut bool }, 0, len(method.Args)+len(method.Ret))
+		for _, arg := range method.Args {
+			args = append(args, struct{ C string; IsOut bool }{C: g.toCType(arg), IsOut: false})
+		}
+		for _, ret := range method.Ret {
+			args = append(args, struct{ C string; IsOut bool }{C: fmt.Sprintf("%s*", g.toCType(ret)), IsOut: true})
+		}
+		fmt.Fprintf(&sb, "void GO_EXPORT(%s)( ", method.Name)
+		for i, a := range args {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			fmt.Fprintf(&sb, "%s arg%d", a.C, i)
+		}
+		sb.WriteString(" ) {\n")
+		for i, a := range args {
+			if a.IsOut {
+				fmt.Fprintf(&sb, "  *arg%d = 0;\n", i)
+			} else {
+				fmt.Fprintf(&sb, "  (void)arg%d;\n", i)
+			}
+		}
+		sb.WriteString("}\n\n")
+	}
+	param.BindSourceCode = strings.TrimSuffix(sb.String(), "\n\n")
+	return param
+}
+
+func (g *Generator) generateBridgeInc(outputDir string, lib *Lib) error {
+	param := g.createBridgeIncParam(lib)
+	output, err := g.generateCCSourceByTemplate("templates/bridge.inc.tmpl", param)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(outputDir, "bridge.inc"), output, 0o600)
 }
 
 func (g *Generator) generateCCSourceByTemplate(tmplPath string, param interface{}) ([]byte, error) {
@@ -729,6 +835,12 @@ type BindGoParam struct {
 
 type BridgeExternParam struct {
 	Funcs []Func
+}
+
+// BridgeIncParam is the template param for bridge.inc (C stub implementations).
+type BridgeIncParam struct {
+	FQDN           string
+	BindSourceCode string
 }
 
 type Func struct {
