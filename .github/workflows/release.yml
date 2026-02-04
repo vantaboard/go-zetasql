@@ -1,9 +1,9 @@
 name: release
 on:
-  workflow_run:
-    workflows: ["Go"]
-    types: [completed]
-    branches: [main]
+  push:
+    branches:
+      - main
+  pull_request:
 permissions:
   contents: write
 jobs:
